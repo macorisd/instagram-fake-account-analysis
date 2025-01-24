@@ -13,8 +13,7 @@ The results are presented in an interactive book generated with Quarto.
 The interactive book is located in the `_book` folder. To view it locally, clone the repository:
 
 ```bash
-git clone https://github.com/your-username/fake-instagram-accounts-detection.git
-cd fake-instagram-accounts-detection
+git clone https://github.com/macorisd/instagram-fake-account-analysis.git
 ```
 
 Then, open the index.html file in any web browser.
