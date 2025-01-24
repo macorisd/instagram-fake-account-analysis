@@ -1,0 +1,25 @@
+project:
+  type: book
+
+book:
+  title: "Proyecto de análisis de cuentas falsas en Instagram"
+  author: "Macorís Decena Giménez"
+  date: "05/29/2024"
+  chapters:
+    - index.qmd
+    - visualizacion.qmd
+    - reglas_asociacion.qmd
+    - fca.qmd
+    - regresion.qmd
+    - conclusion.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+

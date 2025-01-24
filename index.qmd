@@ -1,0 +1,331 @@
+---
+title: "Importación del dataset y Análisis Exploratorio"
+---
+# Importación del dataset y Análisis Exploratorio
+
+## Dataset
+
+```{r warning=FALSE, message=FALSE}
+# Librerías y datasets
+library(readr)
+library(dplyr)
+library(fcaR)
+library(magrittr)
+library(ggplot2)
+library(psych)
+library(arules)
+
+datos <- read_csv("train.csv")
+View(datos)
+datos_test <- read_csv("test.csv")
+View(datos_test)
+```
+
+
+## Análisis exploratorio de datos
+
+Para analizar cualquier dataset, primero es vital explorar sus datos, para comprender mejor el conjunto de datos antes de aplicar técnicas de análisis y/o predictivas.
+
+Primero, echemos un vistazo a las primeras filas del dataset, para hacernos una idea de las columnas con las que trabajamos, y algunos de sus valores:
+
+```{r}
+head(datos)
+```
+
+Comprobemos, también, si el dataset de test posee las mismas columnas:
+
+```{r}
+head(datos_test)
+```
+
+Echando un vistazo a estas salidas, personalmente no me agrada la presencia de espacios en los nombres de las columnas. Renombremos las que presentan espacios o caracteres especiales:
+
+```{r}
+datos <- rename(datos, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+
+datos_test <- rename(datos_test, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+```
+
+A partir de ahora, exploraremos únicamente el dataset de entrenamiento, y dejaremos el de test para probar las conclusiones que saquemos de este análisis.
+
+Una vez ajustados los nombres, resulta especialmente útil echar un vistazo a la estructura del dataset:
+
+```{r}
+str(datos)
+```
+
+Es posible extraer información importante a raíz de la salida anterior:
+
+1.  El dataset tiene 12 columnas, y 576 filas, datos que podemos confirmar fácilmente con los siguientes comandos:
+
+```{r}
+# Mostrar el número de columnas
+ncol(datos)
+
+# Mostrar el número de filas
+nrow(datos)
+```
+
+2.  Todas las columnas del dataset son de tipo numérico (aunque, ciertamente, algunas columnas representan un booleano con valor 0/1, es decir, están binarizadas). Podría ser interesante conocer qué variables son binarias:
+
+```{r}
+# Identificar las columnas binarias
+binarias <- datos %>% 
+  select(where(~ all(. %in% c(0, 1)))) %>% 
+  names()
+
+# Mostrar los nombres de las columnas binarias
+binarias
+```
+
+Una vez conocemos esto, pasemos a observar un resumen estadístico por columnas del dataset:
+
+```{r}
+# Resumen estadístico del dataset
+summary(datos)
+```
+
+De esta salida extraemos la siguiente información importante:
+
+-   profile_pic: el 70,14% de las cuentas tiene foto de perfil. Este dato podría ser importante, ya que muchas cuentas falsas no cuentan con foto de perfil.
+
+-   nums/length_username: el 16,38% de la longitud de los nombres de las cuentas está ocupado por números. Destaca el valor máximo del 92% en una cuenta particular.
+
+-   fullname_words: destaca la media de 1,46, que, intuitivamente, sería lo normal, pues los nombres completos que definimos en redes sociales normalmente contienen una o dos palabras.
+
+-   nums/length_fullname: el 3,6% de la longitud de los nombres completos de las cuentas está ocupado por números. Destaca, de nuevo, un valor alto: un 1 (todo números en el nombre completo, lo cual es extraño).
+
+-   name==username: el 3,4% de las cuentas muestran coincidencia literal en el nombre de usuario y el nombre completo. Este valor tan bajo es bastante normal, puesto que los nombres de usuario son únicos, y es difícil hacer que coincidan con el nombre completo.
+
+-   description_length: destaca la mediana de 0, es decir, que hay muchísimas cuentas del dataset sin ningún caracter en la descripción. La media también es baja en comparación al valor máximo (150), que probablemente sea el máximo permitido por Instagram.
+
+-   external_URL: de nuevo, la mediana es 0, puesto que sólo el 11,63% de las cuentas tienen un link en su biografía. Este dato podría ser especialmente interesante para la predicción de cuentas falsas, pues muchas de ellas, en la realidad, poseen URLs a sitios fraudulentos o promocionales.
+
+-   private: el 38% de las cuentas son privadas.
+
+-   posts: la media es alta (107,5) para lo que cabría esperar. Es un valor interesante, ya que las cuentas falsas no suelen tener muchas fotos publicadas.
+
+-   followers: la media, de nuevo, es alta (85307), y también es un valor significativo, dado que, probablemente, ninguna cuenta falsa estará en los percentiles superiores en cuanto a seguidores. Por ejemplo, el valor máximo es de más de 15 millones de seguidores, y personalmente apostaría mi aprobado en la asignatura a que esa cuenta particular no es falsa.
+
+-   follows: la media (508,4) es un valor razonable.
+
+-   fake: exactamente la mitad de las cuentas del dataset son falsas.
+
+Como conclusiones interesantes, tenemos:
+
+-   Varias variables (posts, follows, followers) muestran una distribución con una media mucho mayor que la mediana, lo que sugiere que hay ciertas cuentas con valores muy altos en estos parámetros.
+
+-   El dataset está equilibrado, habiendo un 50% de cuentas falsas. Esto será útil para el análisis, puesto que un dataset más desequilibrado podría dar lugar a extrapolaciones erróneas de los datos.
+
+-   Algunas variables (profile_pic, posts, followers...) pueden ser altamente reveladoras para decidir si una cuenta es falsa o no, con lo que deberían ser más significativas en el apartado de reglas de asociación.
+
+Una vez hemos examinado los datos estadísticos de las variables, también resulta interesante conocer la presencia de valores nulos en las columnas:
+
+```{r}
+# Contar valores nulos en cada columna
+na_por_columnas <- sapply(datos, function(x) sum(is.na(x)))
+na_por_columnas
+```
+
+Como vemos, es genial que no haya valores nulos en todo el dataset, puesto que su presencia afecta de forma negativa a los resultados. Los valores nulos pueden distorsionar las estadísticas descriptivas (como las vistas anteriormente), llevando a conclusiones incorrectas, así como a pérdida de información y de patrones importantes.
+
+A continuación, con objeto de analizar los valores más extremos del dataset, listemos las 5 filas con mayores y menores valores de cada variable no binaria:
+
+```{r}
+# 10 filas con máximo valor de nums/length_username
+max_nums_length_username <- datos %>% 
+  arrange(desc(datos$`nums/length_username`)) %>% 
+  head(10)
+max_nums_length_username
+```
+
+como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo.
+
+```{r}
+# 10 filas con mínimo valor de nums/length_username
+min_nums_length_username <- datos %>% 
+  arrange(datos$`nums/length_username`) %>% 
+  head(10)
+min_nums_length_username
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo. Sin embargo, no podemos concluir mucho a partir de esta salida, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.
+
+```{r}
+# 10 filas con máximo valor de fullname_words
+max_fullname_words <- datos %>% 
+  arrange(desc(fullname_words)) %>% 
+  head(10)
+max_fullname_words
+```
+
+como se puede observar, las 9 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.
+
+```{r}
+# 10 filas con mínimo valor de fullname_words
+min_fullname_words <- datos %>% 
+  arrange(fullname_words) %>% 
+  head(10)
+min_fullname_words
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser significativo, con la conclusión de que los extremos están ocupados por cuentas verdaderas, pero no debemos precipitarnos con tal conclusión. No podemos concluir mucho a partir de esta salida particular, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.
+
+```{r}
+# 10 filas con máximo valor de nums/length_fullname
+max_nums_length_fullname <- datos %>% 
+  arrange(desc(datos$`nums/length_fullname`)) %>% 
+  head(10)
+max_nums_length_fullname
+```
+
+como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo.
+
+```{r}
+# 10 filas con mínimo valor de nums/length_fullname
+min_nums_length_fullname <- datos %>% 
+  arrange(datos$`nums/length_fullname`) %>% 
+  head(10)
+min_nums_length_fullname
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo, aunque no podemos concluir mucho a partir de esta salida, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.
+
+```{r}
+# 10 filas con máximo valor de description_length
+max_description_length <- datos %>% 
+  arrange(desc(description_length)) %>% 
+  head(10)
+max_description_length
+```
+
+como se puede observar, 7 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser importante, aunque no podemos saltar a conclusiones.
+
+```{r}
+# 10 filas con mínimo valor de description_length
+min_description_length <- datos %>% 
+  arrange(description_length) %>% 
+  head(10)
+min_description_length
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. No podemos concluir nada en este caso, ya que las 10 filas tienen 0 de longitud de descripción (podría haber cuentas falsas con 0 que no aparezcan aquí).
+
+```{r}
+# 10 filas con máximo valor de posts
+max_posts <- datos %>% 
+  arrange(desc(posts)) %>% 
+  head(10)
+max_posts
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.
+
+```{r}
+# 10 filas con mínimo valor de posts
+min_posts <- datos %>% 
+  arrange(posts) %>% 
+  head(10)
+min_posts
+```
+
+como se puede observar, 6 de las 10 filas son de cuentas falsas. No podemos concluir nada, ya que, además, el valor de la variable en estas 10 filas es 0, y podríamos estar perdiendo información si hay más filas con 0 que no aparezcan aquí.
+
+```{r}
+# 10 filas con máximo valor de followers
+max_followers <- datos %>% 
+  arrange(desc(followers)) %>% 
+  head(10)
+max_followers
+```
+
+como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.
+
+```{r}
+# 10 filas con mínimo valor de followers
+min_followers <- datos %>% 
+  arrange(followers) %>% 
+  head(10)
+min_followers
+```
+
+como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo. La intuición, además, me dice que es extraño tener una cuenta verdadera con 0 seguidores, pero tampoco podemos extraer conclusiones precisas, puesto que en las 10 filas el valor de seguidores es 0, y podría haber más filas en el dataset con un valor 0 que no aparezcan aquí.
+
+```{r}
+# 10 filas con máximo valor de follows
+max_follows <- datos %>% 
+  arrange(desc(follows)) %>% 
+  head(10)
+max_follows
+```
+
+como se puede observar, 7 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser significativo, aunque habría que analizarlo con más detenimiento.
+
+```{r}
+# 10 filas con mínimo valor de follows
+min_follows <- datos %>% 
+  arrange(follows) %>% 
+  head(10)
+min_follows
+```
+
+como se puede observar, 9 de las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo. La intuición, además, me dice que es extraño tener una cuenta verdadera con 0 cuentas seguidas, pero tampoco podemos extraer conclusiones precisas, puesto que en las 10 filas el valor de cuentas seguidas es 0, y podría haber más filas en el dataset con un valor 0 que no aparezcan aquí.
+
+Las conclusiones más precisas (aunque pendientes de demostrar en apartados posteriores) que extraemos de los valores extremo son en cuanto a las variables:
+
+-   nums/length_username: los valores altos los tienen las cuentas falsas.
+
+-   fullname_words: los valores altos los tienen las cuentas verdaderas.
+
+-   nums/length_fullname: los valores altos los tienen las cuentas falsas.
+
+-   posts: los valores altos los tienen las cuentas verdaderas.
+
+-   followers: los valores altos los tienen las cuentas verdaderas.
+
+Para finalizar con el análisis exploratorio, y guardando cierta relación con el último conjunto de comandos, echemos un vistazo al contenido de las variables
+
+```{r}
+# Calcula el promedio de cada variable para las cuentas falsas y reales
+fake_comparacion <- datos %>%
+  group_by(fake) %>%
+  summarise(
+    profile_pic_ratio = mean(profile_pic),
+    avg_nums_length_username = mean(`nums/length_username`),
+    avg_fullname_words = mean(fullname_words),
+    avg_nums_length_fullname = mean(`nums/length_fullname`),
+    name_equals_username_ratio = mean(`name==username`),
+    avg_description_length = mean(description_length),
+    external_URL_ratio = mean(external_URL),
+    private_ratio = mean(private),
+    avg_posts = mean(posts),
+    avg_followers = mean(followers),
+    avg_follows = mean(follows)
+  )
+fake_comparacion
+
+```
+
+Analicemos los resultados por variable:
+
+-   profile_pic: es 2,48 veces más probable que una cuenta con foto de perfil sea verdadera a falsa. Esta significancia es importante.
+
+-   nums/length_username: las cuentas falsas multiplican en 7,36 veces este valor con respecto a las verdaderas. Esta significancia es muy importante.
+
+-   fullname_words: las cuentas verdaderas multiplican en 1,55 veces este valor con respecto a las falsas. Esta significancia es leve.
+
+-   nums/length_fullname: las cuentas falsas multiplican en 12,88 veces este valor con respecto a las verdaderas. Esta significancia es muy importante.
+
+-   name==username: las cuentas falsas multiplican en 19,11 veces este valor con respecto a las verdaderas. Esta significancia es altamente importante.
+
+-   description_length: las cuentas verdaderas multiplican en 7,6 veces este valor con respecto a las falsas. Esta significancia es muy importante.
+
+-   external_URL: ninguna cuenta falsa del dataset tiene URL externa, lo cual parece ser un buen criterio de decisión.
+
+-   private: los valores son casi idénticos. La significancia parece ser nula.
+
+-   posts: las cuentas verdaderas multiplican en 23,07 veces este valor con respecto a las falsas. Esta significancia es altamente importante.
+
+-   followers: las cuentas verdaderas multiplican en 1550 veces este valor con respecto a las falsas. Esta significancia es abismal. Sin embargo, tengamos en cuenta que la media de seguidores es tan alta porque hay ciertas cuentas en el dataset que tienen millones de seguidores. En un dataset más aleatorio, con cuentas verdaderas más "mundanas", la significancia de este atributo sería menor.
+
+-   follows: las cuentas verdaderas multiplican en 2,36 veces este valor con respecto a las falsas. Esta significancia es notable.

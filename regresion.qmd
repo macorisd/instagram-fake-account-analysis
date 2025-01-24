@@ -1,0 +1,429 @@
+---
+title: "Regresión"
+---
+
+```{r warning=FALSE, message=FALSE}
+# Librerías, datasets y procesamiento previo
+library(readr)
+library(dplyr)
+library(fcaR)
+library(magrittr)
+library(ggplot2)
+library(psych)
+library(arules)
+
+datos <- read_csv("train.csv")
+View(datos)
+datos_test <- read_csv("test.csv")
+View(datos_test)
+
+datos <- rename(datos, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+
+datos_test <- rename(datos_test, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+```
+
+## Regresión
+
+Una vez visto el Formal Concept Analysis, ahora es el turno de la regresión: analizar la relación entre una variable dependiente (variable objetivo o respuesta) y ciertas variables independientes (variable predictora o explicativa).
+
+### Modelos multi-variable
+
+En nuestro caso, la variable dependiente será 'fake', y trataremos de encontrar el mejor modelo para explicar la variable dependiente.
+
+Primero, realicemos un plot de los datos para intentar encontrar relaciones visuales:
+
+```{r}
+plot(datos)
+```
+
+Se observa que, lógicamente, es imposible extraer información visual de la relación entre 'fake' y las demás variables binarias, ya que aparecen 4 puntos en las esquinas (las 4 posibles combinaciones). Sin embargo, las variables numéricas son más reveladoras. Por ejemplo, se nota que en posts y followers hay más cuentas fake cuando estas variables tienen valores bajos.
+
+Podemos osbervar un mejor gráfico quitando las variables binarias:
+
+```{r}
+pairs.panels(datos[c("profile_pic","nums/length_username","fullname_words","nums/length_fullname","description_length","posts","followers","follows","fake")])
+```
+
+Queda claro que es necesario un análisis numérico. Comencemos por construir un modelo lineal con todas las variables posibles como independientes:
+
+```{r}
+modelo1 <- lm(fake ~ .,
+              data = datos)
+
+summary(modelo1)
+```
+
+Analicemos la salida:
+
+-   Un intercept de 0,7931 indica que ese es el valor medio de la variable dependiente ('fake') cuando las variables independientes son cero.
+-   profile_pic: es muy significativa, con el valor estimado negativo, es decir, tener una foto de perfil disminuye la probabilidad de ser una cuenta falsa.
+-   nums/length_username: es muy significativa, con un valor estimado de positivo, es decir, un mayor ratio de caracteres numéricos en el nombre de usuario aumenta la probabilidad de ser una cuenta falsa.
+-   fullname_words: es algo significativa, con un valor estimado negativo, es decir, un mayor número de palabras en el nombre completo disminuye ligeramente la probabilidad de ser una cuenta falsa.
+-   nums/length_fullname: no es significativa. Su variación no influye notablemente en la probabilidad de que la cuenta sea falsa.
+-   name==username: es significativa, con un valor estimado positivo, es decir, si el nombre completo y el nombre de usuario son iguales, aumenta la probabilidad de ser una cuenta falsa.
+-   description_length: es muy significativa, con un valor estimado negativo, es decir, una mayor longitud de la descripción disminuye la probabilidad de ser una cuenta falsa.
+-   external_URL: es significativa, con un valor estimado negativo, es decir, tener una URL externa disminuye la probabilidad de ser una cuenta falsa.
+-   private: no es significativa. Su variación no influye notablemente en la probabilidad de que la cuenta sea falsa.
+-   posts: es significativa, con un valor estimado negativo, es decir, un mayor número de publicaciones disminuye la probabilidad de ser una cuenta falsa.
+-   followers: no es significativa. Su variación no influye notablemente en la probabilidad de que la cuenta sea falsa.
+-   follows: no es significativa. Su variación no influye notablemente en la probabilidad de que la cuenta sea falsa.
+
+Esta información nos será útil para la construcción de modelos útiles, que tengan en cuenta las variables más significativas.
+
+Probemos a construir un modelo lineal que deseche las variables no significativas:
+
+```{r}
+modelo2 <- lm(fake ~ profile_pic + `nums/length_username` + fullname_words + `name==username` + description_length + external_URL + posts, 
+              data = datos)
+
+summary(modelo2)
+```
+
+Expliquemos los resultados generales y la mejora de este modelo con respecto al anterior:
+
+-   Residual Standard Error: el error estándar residual mide la dispersión de los residuos. Una disminución en el segundo modelo (0,316) indica una ligera mejora en la precisión de las predicciones del modelo simplificado.
+-   Multiple R-squared: el R-cuadrado múltiple mide la proporción de la variabilidad en la variable dependiente que es explicada por las variables independientes. Ambos modelos tienen valores similares, con una ligera disminución en el segundo modelo (0,606), lo que indica que se ha perdido ligeramente esa capacidad explicativa de las variables independientes.
+-   Adjusted R-squared: el R-cuadrado ajustado tiene en cuenta el número de variables en el modelo y penaliza la inclusión de variables irrelevantes. El aumento en el R-cuadrado ajustado en el segundo modelo (0,6012) sugiere que el modelo simplificado es más eficiente al explicar la variabilidad de la variable dependiente con menos variables.
+-   F-Statistic: la F-estadística mide la relación entre la variabilidad explicada y la variabilidad no explicada del modelo. Un valor más alto en el segundo modelo (124,8) indica que el modelo simplificado tiene un ajuste global mejor y es más significativo.
+-   p-value: el valor p indica la significancia general del modelo. En ambos casos, el valor p es extremadamente pequeño, lo que significa que ambos modelos son altamente significativos.
+
+Probemos un modelo en el que las variables con mayor nivel de significancia estén al cuadrado:
+
+```{r}
+modelo3 <- lm(fake ~ I(profile_pic^2) + I(`nums/length_username`^2) + fullname_words + `name==username` + I(description_length^2) + external_URL + posts, 
+              data = datos)
+
+summary(modelo3)
+```
+
+Este modelo es peor que los anteriores en todos los parámetros generales.
+
+Probemos con un modelo lineal cuyas variables independientes son únicamente las 3 que en el primer modelo tenían más significancia:
+
+```{r}
+modelo4 <- lm(fake ~ profile_pic + `nums/length_username` + description_length, 
+              data = datos)
+
+summary(modelo4)
+```
+
+Este modelo es el mejor por ahora. Ninguno le supera en los parámetros finales, excepto los 2 primeros modelos en el error.
+
+Probemos a elevar al cuadrado las dos variables que, en el primer modelo, eran las más significativas:
+
+```{r}
+modelo5 <- lm(fake ~ I(profile_pic^2) + I(`nums/length_username`^2) + description_length, 
+              data = datos)
+
+summary(modelo5)
+```
+
+Los resultados empeoran.
+
+Parece difícil mejorar el modelo4. Probemos con un modelo que tenga en cuenta únicamente 2 variables más significativas del modelo1, pero sin cuadrados:
+
+```{r}
+modelo6 <- lm(fake ~ profile_pic + `nums/length_username`, 
+              data = datos)
+
+summary(modelo6)
+```
+
+El F estadístico mejora, pero los demás parámetros empeoran ligeramente. Aun así, veo este modelo como el mejor, ya que el empeoramiento es muy leve, y el aumento del F estadístico es grande.
+
+### Modelos con una variable independiente (con visualización)
+
+Como acabamos de ver, eliminar variables independientes ha generado buenos resultados. Aunque dudo que encontremos un modelo mejor, aprovechemos para realizar modelos con una única variable independiente (probando con todas ellas y visualizando la predicción).
+
+#### Modelo con profile_pic como variable independiente:
+
+```{r}
+modelo7 <- lm(fake ~ profile_pic, 
+              data = datos)
+
+summary(modelo7)
+```
+
+El F estadístico mejora, pero los demás parámetros empeoran considerablemente.
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=profile_pic, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=profile_pic, y=predict(modelo7),
+                color="red"))
+```
+
+Sin foto de perfil, hay más probabilidad de que la cuenta sea falsa.
+
+#### Modelo con nums/length_username como variable independiente:
+
+```{r}
+modelo8 <- lm(fake ~ `nums/length_username`, 
+              data = datos)
+
+summary(modelo8)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=`nums/length_username`, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=`nums/length_username`, y=predict(modelo8),
+                color="red"))
+```
+
+Con valores bajos de este ratio es menos probable que la cuenta sea falsa.
+
+#### Modelo con fullname_words como variable independiente:
+
+```{r}
+modelo9 <- lm(fake ~ fullname_words, 
+              data = datos)
+
+summary(modelo9)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=fullname_words, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=fullname_words, y=predict(modelo9),
+                color="red"))
+```
+
+Con mayores bajos de fullname_words es más probable que la cuenta sea falsa.
+
+#### Modelo con name==username como variable independiente:
+
+```{r}
+modelo10 <- lm(fake ~ `name==username`, 
+              data = datos)
+
+summary(modelo10)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=`name==username`, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=`name==username`, y=predict(modelo10),
+                color="red"))
+```
+
+Cuando la coincidencia de fullname y username está presente, es más probable que la cuenta sea falsa.
+
+#### Modelo con description_length como variable independiente:
+
+```{r}
+modelo11 <- lm(fake ~ description_length, 
+              data = datos)
+
+summary(modelo11)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=description_length, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=description_length, y=predict(modelo11),
+                color="red"))
+```
+
+Para valores altos de description_length es menos probable que la cuenta sea falsa.
+
+#### Modelo con external_URL como variable independiente:
+
+```{r}
+modelo12 <- lm(fake ~ external_URL, 
+              data = datos)
+
+summary(modelo12)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=external_URL, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=external_URL, y=predict(modelo12),
+                color="red"))
+```
+
+Para valores 1 de URL externa, es menos probable que la cuenta sea falsa.
+
+#### Modelo con private como variable independiente:
+
+```{r}
+modelo13 <- lm(fake ~ private, 
+              data = datos)
+
+summary(modelo13)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=private, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=private, y=predict(modelo13),
+                color="red"))
+```
+
+Como ya señalamos en apartados anteriores, la variable private no determina notablemente si es más o menos probable que la cuenta sea falsa. Este gráfico lo respalda.
+
+#### Modelo con posts como variable independiente:
+
+```{r}
+modelo14 <- lm(fake ~ posts, 
+              data = datos)
+
+summary(modelo14)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=posts, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=posts, y=predict(modelo14),
+                color="red"))
+```
+
+Para valores altos de publicaciones es menos probable que la cuenta sea falsa.
+
+#### Modelo con followers como variable independiente:
+
+```{r}
+modelo15 <- lm(fake ~ followers, 
+              data = datos)
+
+summary(modelo15)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=followers, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=followers, y=predict(modelo15),
+                color="red"))
+```
+
+Para valores altos de seguidores es menos probable que la cuenta sea falsa.
+
+#### Modelo con follows como variable independiente:
+
+```{r}
+modelo16 <- lm(fake ~ follows, 
+              data = datos)
+
+summary(modelo16)
+```
+
+Veamos la predicción:
+
+```{r}
+datos %>%
+  ggplot(aes(x=follows, y=fake)) + 
+  geom_point() + 
+  geom_line(aes(x=follows, y=predict(modelo16),
+                color="red"))
+```
+
+Para valores altos de cuentas seguidas es menos probable que la cuenta sea falsa.
+
+Como hemos podido observar, las conclusiones extraídas coinciden con las conclusiones que hemos estado viendo en los apartados anteriores. La regresión es un mecanismo muy útil y sencillo para predecir valores esperados, tal y como hemos comprobado.
+
+### Predicción
+
+Ahora, es momento de predecir la variable dependiente del dataset de test con el mejor modelo encontrado: modelo6.
+
+```{r}
+# Realizar la predicción con el modelo de regresión modelo6
+prediccion <- predict(modelo6, newdata = datos_test)
+prediccion
+```
+
+Como vemos, hay valores que se salen de los límites de \[0,1\], con lo que ajustaremos los valores predichos: \< 0.5 será 0 y \>= 0.5 será 1.
+
+```{r}
+# Ajustar los valores predichos: < 0.5 será 0 y >= 0.5 será 1
+fake_predict_regresion <- ifelse(prediccion < 0.5, 0, 1)
+
+# Leer el archivo CSV
+datos_test_predicciones <- read.csv("datos_test_predicciones.csv")
+
+# Guardar los valores ajustados en una nueva columna de datos_test_predicciones
+datos_test_predicciones$fake_predict_regresion <- fake_predict_regresion
+
+# Mostrar las primera filas de datos_test_predicciones
+head(datos_test_predicciones)
+```
+
+Ahora, contemos el número de valores NA en la columna fake_predict_regresion:
+
+```{r}
+# Contar el número de valores NA en la columna fake_predict_regresion
+cat("La columna fake_predict_regresion tiene ", sum(is.na(datos_test_predicciones$fake_predict_regresion)), " valores NA")
+```
+
+Parece que la predicción ha sido satisfactoria. Ahora, calculemos el porcentaje de éxito en la predicción de cuentas falsas, de cuentas verdaderas y en general:
+
+```{r}
+# Calcular el porcentaje de éxito en la predicción de cuentas falsas
+predicciones_correctas_falsas_regresion <- sum(datos_test_predicciones$fake_predict_regresion == datos_test_predicciones$fake & datos_test_predicciones$fake == 1)
+total_falsas_regresion <- sum(datos_test_predicciones$fake == 1)
+porcentaje_exito_falsas_regresion <- (predicciones_correctas_falsas_regresion / total_falsas_regresion) * 100
+
+# Calcular el porcentaje de éxito en la predicción de cuentas verdaderas
+predicciones_correctas_verdaderas_regresion <- sum(datos_test_predicciones$fake_predict_regresion == datos_test_predicciones$fake & datos_test_predicciones$fake == 0)
+total_verdaderas_regresion <- sum(datos_test_predicciones$fake == 0)
+porcentaje_exito_verdaderas_regresion <- (predicciones_correctas_verdaderas_regresion / total_verdaderas_regresion) * 100
+
+# Calcular el porcentaje de éxito general
+predicciones_correctas_regresion <- sum(datos_test_predicciones$fake_predict_regresion == datos_test_predicciones$fake)
+total_predicciones_regresion <- nrow(datos_test_predicciones)
+porcentaje_exito_general_regresion <- (predicciones_correctas_regresion / total_predicciones_regresion) * 100
+
+# Guardar el data frame en un archivo CSV
+write.csv(datos_test_predicciones, "datos_test_predicciones.csv", row.names = FALSE)
+
+# Imprimir el resultado
+cat("El porcentaje de éxito en la predicción de cuentas falsas es:", porcentaje_exito_falsas_regresion, "%\n", "El porcentaje de éxito en la predicción de cuentas verdaderas es:", porcentaje_exito_verdaderas_regresion, "%\n", "El porcentaje de éxito general en la predicción de cuentas es:", porcentaje_exito_general_regresion, "%\n")
+```
+
+Como vemos, los porcentajes de éxito son altos, lo que indica que el modelo de regresión ha sido efectivo en la predicción de cuentas falsas y verdaderas.
+
+Añadamos los porcentajes de éxito a la tabla de porcentajes:
+
+```{r}
+# Leer el archivo CSV
+exito_predicciones <- read.csv("exito_predicciones.csv")
+
+# Añadir los porcentajes de éxito a la tabla de porcentajes
+exito_predicciones <- rbind(exito_predicciones, c("Regresión", porcentaje_exito_falsas_regresion, porcentaje_exito_verdaderas_regresion, porcentaje_exito_general_regresion))
+exito_predicciones
+
+# Guardar el data frame en un archivo CSV
+write.csv(exito_predicciones, "exito_predicciones.csv", row.names = FALSE)
+```
+
+Las reglas de asociación han rendido algo mejor que la regresión en la predicción de cuentas falsas, pero la regresión ha sido mejor que las reglas de asociación en la predicción de cuentas verdaderas y en general. En general, la regresión ha sido 6 puntos más efectiva en la predicción general, con respecto a las reglas de asociación.
+
+FCA y regresión han rendido igual de bien en la predicción de cuentas falsas, pero FCA ha sido mejor en la predicción de cuentas verdaderas y en general. En general, FCA ha sido 2,5 puntos más efectiva en la predicción general, con respecto a la regresión.
+

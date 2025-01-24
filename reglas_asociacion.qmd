@@ -1,0 +1,657 @@
+---
+title: "Reglas de Asociación"
+---
+
+```{r warning=FALSE, message=FALSE}
+# Librerías, datasets y procesamiento previo
+library(readr)
+library(dplyr)
+library(fcaR)
+library(magrittr)
+library(ggplot2)
+library(psych)
+library(arules)
+
+datos <- read_csv("train.csv")
+View(datos)
+datos_test <- read_csv("test.csv")
+View(datos_test)
+
+datos <- rename(datos, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+
+datos_test <- rename(datos_test, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+```
+
+## Reglas de Asociación
+
+Ya hemos explorado, numérica y visualmente, el conjunto de datos de entrenamiento. A continuación, es turno de trabajar con las reglas de asociación, o lo que es lo mismo, descubrir relaciones y patrones de comportamiento revelados por los datos.
+
+### Obtención de las reglas
+
+```{r}
+# Eliminar las columnas de visualización
+datos$num_length_interval <- NULL
+datos$fullname_length_interval <- NULL
+datos$description_length_interval <- NULL
+datos$posts_interval <- NULL
+datos$followers_interval <- NULL
+datos$follows_interval <- NULL
+
+View(datos)
+```
+
+Tras eliminar las columnas del apartado de visualización, pasemos a la generación de reglas de asociación, no sin antes ajustar el dataset para adecuarlo a la producción de las reglas.
+
+En primer lugar, convertiremos el dataset a un data frame, y ajustaremos los tipos de las columnas. Necesitamos convertir las variables binarias al tipo "factor", para que no aparezcan intervalos del tipo \[0,1\] en estas variables en las reglas, así como discretizar a nuestro gusto las variables numéricas, para establecer categorías/intervalos razonables de acuerdo al dato particular con el que estemos trabajando:
+
+```{r}
+# Convertir dataset a data frame
+datosDF <- data.frame(datos)
+
+# Mostrar tipo y un valor de las columnas 1 y 3
+cat("La clase de la columna 1 (profile_pic) es:", class(datosDF[[1]]), "\nLa clase de la columna 3 (fullname_words) es:", class(datosDF[[3]]))
+```
+
+```{r}
+head(datosDF, 5)
+```
+
+Como vemos, los tipos iniciales de las variables profile_pic y fullname_words son numéricos.
+
+Ahora pasemos a ajustar los tipos de datos:
+
+```{r}
+# Discretizar columnas numéricas
+datosDF$nums.length_username <- discretize(datosDF$nums.length_username, method="interval", breaks = 5)
+datosDF$fullname_words <- discretize(datosDF$fullname_words, method="frequency", breaks = 5)
+datosDF$nums.length_fullname <- discretize(datosDF$nums.length_fullname, method="interval", breaks = 5)
+datosDF$description_length <- discretize(datosDF$description_length, method="frequency", breaks = 5)
+datosDF$posts <- discretize(datosDF$posts, method="frequency", breaks = 7)
+datosDF$followers <- discretize(datosDF$followers, method="frequency", breaks = 10)
+datosDF$follows <- discretize(datosDF$follows, method="frequency", breaks = 7)
+
+# Identificar las columnas binarias y numéricas
+columnas_binarias <- c(1, 5, 7, 8, 12) # Índices de las columnas binarias
+
+# Convertir columnas binarias a factores
+datosDF[, columnas_binarias] <- lapply(datosDF[, columnas_binarias], factor)
+View(datosDF)
+```
+
+Expliquemos el sentido de los parámetros usados en la discretización/conversión para cada variable:
+
+-   profile_pic: esta variable es binaria, con lo que se convierte a factor y tendrá 2 niveles.
+
+-   nums/length_username: esta variable es numérica pero está comprendida entre 0 y 1. Por ello, he usado 5 breaks (máximo de 5 categorías) y el método interval (categorías de igual tamaño).
+
+-   fullname_words: esta variable es numérica, con valores pequeños. Por ello, he usado 5 breaks (máximo de 5 categorías) y el método frequency (categorías de distinto tamaño, calculado en base a la frecuencia de los valores).
+
+-   nums/length_fullname: esta variable es numérica pero está comprendida entre 0 y 1. Por ello, he usado 5 breaks (máximo de 5 categorías) y el método interval (categorías de igual tamaño).
+
+-   name==username: esta variable es binaria, con lo que se convierte a factor y tendrá 2 niveles.
+
+-   description_length: esta variable es numérica, con valores relativamente pequeños. Por ello, he usado 5 breaks (máximo de 5 categorías) y el método frequency (categorías de distinto tamaño, calculado en base a la frecuencia de los valores).
+
+-   external_URL: esta variable es binaria, con lo que se convierte a factor y tendrá 2 niveles.
+
+-   private: esta variable es binaria, con lo que se convierte a factor y tendrá 2 niveles.
+
+-   posts: esta variable es numérica, con valores que pueden llegar a ser grandes. Por ello, he usado 7 breaks (máximo de 7 categorías) y el método frequency (categorías de distinto tamaño, calculado en base a la frecuencia de los valores).
+
+-   followers: esta variable es numérica, con valores que pueden llegar a ser enormes Por ello, he usado 10 breaks (máximo de 10 categorías) y el método frequency (categorías de distinto tamaño, calculado en base a la frecuencia de los valores).
+
+-   follows: esta variable es numérica, con valores que pueden llegar a ser grandes. Por ello, he usado 7 breaks (máximo de 7 categorías) y el método frequency (categorías de distinto tamaño, calculado en base a la frecuencia de los valores).
+
+-   fake: esta variable es binaria, con lo que se convierte a factor y tendrá 2 niveles.
+
+Discretizar variables numéricas antes de crear reglas de asociación es recomendable, ya que ayuda a simplificar el análisis y mejorar la capacidad para manejar el ruido y la variabilidad en los datos.
+
+Ahora, veamos los niveles (número de intervalos) que posee cada variable:
+
+```{r}
+# Obtener los niveles de cada variable recorriendo las columnas
+for (col_name in names(datosDF)) {
+  col <- datosDF[[col_name]]
+  if (is.factor(col)) {
+    cat(length(levels(col)), " niveles en", col_name, ":", levels(col), "\n")
+  }
+}
+
+```
+
+Ahora, veamos el cambio en el tipo de datos:
+
+```{r}
+# Mostrar tipo y un valor de las columnas 1 y 3
+cat("La clase de la columna 1 (profile_pic) es:", class(datosDF[[1]]), "\nLa clase de la columna 3 (fullname_words) es:", class(datosDF[[3]]))
+```
+
+```{r}
+head(datosDF, 5)
+```
+
+Como podemos ver, ahora profile_pic tiene un valor 1 (de tipo factror), y fullname_words tiene valores comprendidos en un intervalo (categorías).
+
+Para generar reglas de asociación, se recomienda trabajar con datos de tipo transacción, ya que este tipo permite representar los datos en un formato adecuado para el algoritmo, facilitando la identificación de patrones de asociación. Por ello, convertiremos datosDF en tipo transacciones:
+
+```{r}
+# Convertir a tipo transacción
+Tdatos <- as(datosDF, "transactions")
+class(Tdatos)
+```
+
+Una vez preparados los datos, es hora de utilizar el algoritmo apriori para generar las reglas de asociación.
+
+Para generar las reglas, usaré un soporte de 0,1 (para que las reglas generadas tengan un mínimo razonable de apariciones en los datos) y una confianza del 90% (para extraer únicamente reglas precisas):
+
+```{r}
+# Generar reglas de asociación con suporte = 0,1 y confianza = 0,9
+reglas <- apriori(Tdatos, list(supp=0.1, conf=0.9))
+```
+
+Veamos cuántas reglas hay con soporte = 0,1 y confianza = 0,9:
+
+```{r}
+# Número de reglas con soporte = 0,1 y confianza = 0,9
+length(reglas)
+```
+
+Un paso necesario al generar reglas es eliminar las redundantes:
+
+```{r}
+# Eliminar reglas redundantes
+indices_no_redundantes <- which(!is.redundant(reglas))
+reglas <- reglas[indices_no_redundantes]
+```
+
+Veamos cuántas reglas sin redundancia hay:
+
+```{r}
+# Número de reglas sin redundancia
+length(reglas)
+```
+
+Ahora, quedémonos únicamente con las reglas estadísticamente significativas:
+
+```{r}
+indices_significativos <- which(is.significant(reglas))
+reglas <- reglas[indices_significativos]
+```
+
+Veamos cuántas reglas significativas hay:
+
+```{r}
+# Número de reglas significativas
+length(reglas)
+```
+
+Un parámetro muy importante para las reglas de asociación es el lift, ya que, si este dato es superior a 1, significa que el antecedente y el consecuente tienden a ocurrir juntos más frecuentemente de lo que se esperaría por azar. Es decir, un lift de 3 significa que el antecedente hace que el consecuente sea 3 veces más probable que ocurra.
+
+También nos interesa el count, es decir, el número de casos en los que esa regla se cumple. Ya hemos aplicado el filtro de soporte al crear las reglas, pero, por si acaso, establezcamos también un count mínimo de 50.
+
+Apliquemos ambos filtros:
+
+```{r}
+reglas <- subset(reglas, subset = lift > 1 & count > 50)
+```
+
+Veamos cuántas reglas con lift \> 1 y count \> 50 hay:
+
+```{r}
+# Número de reglas con lift > 1 y count > 50
+length(reglas)
+```
+
+El número de reglas no ha disminuido, lo que sugiere que los filtros anteriores se han encargado de desechar las reglas con lift \<= 1 y count \<= 50.
+
+Echemos un vistazo a las primeras 15 reglas, ordenadas por confianza:
+
+```{r}
+# Visualizar las 20 primeras reglas
+reglas <- sort(reglas, by="confidence")
+inspect(reglas[1:20])
+```
+
+Como vemos, las 20 reglas tienen 100% de confianza, y gracias a los filtros, tienen también buenos valores de lift y coverage.
+
+Veamos cuántas reglas tienen un 100% de confianza:
+
+```{r}
+reglas_confianza <- subset(reglas, confidence == 1)
+length(reglas_confianza)
+```
+
+Hay 55 reglas que son perfectamente precisas, es decir, que si aparece el antecedente, el consecuente también se cumple en el 100% de los casos.
+
+Una vez examinadas algunas características generales de las reglas, es el momento de quedarnos con las reglas realmente importantes para este proyecto, es decir, las que involucran al parámetro "fake". Nuestro objetivo actual es, pues, determinar qué parámetros son determinantes para decidir si una cuenta es falsa o verdadera (parámetro "fake" en el consecuente), así como analizar qué patrones suelen cumplirse en las cuentas falsas o verdaderas (parámetro "fake" en el antecedente).
+
+Comencemos con el primer enfoque:
+
+### ¿Qué parámetros deciden si una cuenta es verdadera o falsa?
+
+Para encontrar las variables o conjuntos de variables que, en nuestro dataset, determinan si una cuenta es verdadera o falsa con total o casi total seguridad, es necesario encontrar las reglas que presenten el parámetro fake en su consecuente.
+
+Para cuentas falsas:
+
+```{r}
+reglas_fake <- subset(reglas, subset = rhs %in% "fake=1")
+length(reglas_fake)
+```
+
+```{r}
+inspect(reglas_fake)
+```
+
+Y para cuentas verdaderas:
+
+```{r}
+reglas_verdaderas <- subset(reglas, subset = rhs %in% "fake=0")
+length(reglas_verdaderas)
+```
+
+```{r}
+inspect(reglas_verdaderas)
+```
+
+Como podemos observar, han quedado 21 reglas con fake=1 en el consecuente (cuentas falsas), y 29 reglas con fake=0 en el consecuente (cuentas verdaderas). Para analizar algunas reglas interesantes, primero combinemos ambos conjuntos de reglas:
+
+```{r}
+# Combinar ambas selecciones
+reglas_fake_verdaderas <- c(reglas_fake, reglas_verdaderas)
+length(reglas_fake_verdaderas)
+```
+
+Por la longitud, sabemos que la combinación de las reglas ha sido exitosa. Ahora sí, analicemos las reglas.
+
+En primer lugar, veamos si existen reglas con una sola variable en el antecedente:
+
+```{r}
+reglas_fv_1left <- subset(reglas_fake_verdaderas, size(lhs) == 1)
+length(reglas_fv_1left)
+```
+
+```{r}
+reglas_fv_1left <- sort(reglas_fv_1left, by="confidence")
+inspect(reglas_fv_1left)
+```
+
+Comentemos las reglas obtenidas:
+
+1.  Como vemos, sólo una de estas reglas posee plena confianza, y, de hecho, la conocíamos con anterioridad: ya dijimos que, en este dataset, no había cuentas falsas con URL externa. Por lo tanto, si una cuenta tiene URL externa, será verdadera.
+
+2.  También mencionamos que la ausencia de foto de perfil llevaba a pensar en una cuenta falsa. Ahora lo podemos afirmar con una confianza del 98,83%.
+
+3.  Otra conclusión ya vista es la de que un número alto de publicaciones normalmente conduce a una cuenta verdadera. La confianza cuando el valor de publicaciones está entre 188 y 7390 (es el intervalo más alto) es del 98,79%.
+
+4.  Al igual que con la foto de perfil, la ausencia de publicaciones llevaba a pensar en cuentas falsas. En este caso, el intervalo es de 0-1 publicaciones, y nos garantiza falsedad de la cuenta en el 97,45% de los casos.
+
+5.  Esta regla es algo más extraña. El intervalo intermedio de valores del ratio de números en la longitud del username indica que la cuenta es falsa con confianza del 95%. Ya vimos, en la visualización, que los valores altos de esta variable aparecían en las cuentas falsas, con lo que probablemente los intervalos superiores aparecerán en los conjuntos de reglas con más de una variable en el antecedente.
+
+A continuación veremos todas estas reglas, y comentaremos las más llamativas:
+
+```{r}
+reglas_fake_verdaderas <- sort(reglas_fake_verdaderas, by="confidence")
+inspect(reglas_fake_verdaderas)
+```
+
+Para extraer las conclusiones generales de estas 50 reglas, analicemos la frecuencia de aparición de los antecedentes, empezando con las cuentas falsas:
+
+```{r}
+# Seleccionar reglas donde rhs es "fake=1"
+reglas_fake_rhs <- subset(reglas, subset = rhs %in% "fake=1")
+
+# Convertir los antecedentes a una lista
+antecedentes_lista_f <- as(lhs(reglas_fake_rhs), "list")
+
+# Crear una tabla de frecuencias
+frecuencia_ant_f <- table(unlist(antecedentes_lista_f))
+
+# Ordenar la tabla de frecuencias de forma descendente
+frecuencia_ant_f_ordenada <- sort(frecuencia_ant_f, decreasing = TRUE)
+
+frecuencia_ant_f_ordenada
+```
+
+Podemos afirmar con una seguridad considerable que una cuenta es falsa cuando identificamos ciertas combinaciones de estas características:
+
+-   Pocas palabras en el nombre completo
+-   Pocas o nulas publicaciones
+-   Descripción vacía o muy breve
+-   Ausencia de foto de perfil
+-   Ratio de números en la longitud del username entre 0,184 y 0,552
+-   Pocos o nulos seguidos
+-   Cuenta pública
+-   Ausencia de URL externa
+
+Ahora veamos la frecuencia de aparición de los antecedentes para cuentas verdaderas:
+
+```{r}
+# Seleccionar reglas donde rhs es "fake=0"
+reglas_verdaderas_rhs <- subset(reglas, subset = rhs %in% "fake=0")
+
+# Convertir los antecedentes a una lista
+antecedentes_lista_v <- as(lhs(reglas_verdaderas_rhs), "list")
+
+# Crear una tabla de frecuencias
+frecuencia_ant_v <- table(unlist(antecedentes_lista_v))
+
+# Ordenar la tabla de frecuencias de forma descendente
+frecuencia_ant_v_ordenada <- sort(frecuencia_ant_v, decreasing = TRUE)
+
+frecuencia_ant_v_ordenada
+```
+
+Podemos afirmar con una seguridad considerable que una cuenta es verdadera cuando identificamos ciertas combinaciones de estas características:
+
+-   Ratio de números en la longitud del username entre 0 y 0,184
+-   Cantidad considerable de palabras en el nombre completo
+-   Presencia de foto de perfil
+-   Descripción detallada
+-   Ratio de números en la longitud del nombre completo entre 0 y 0,2
+-   Cuenta privada \*
+-   Número alto de publicaciones
+-   Cuenta pública \*
+-   Número alto de seguidos
+-   Ausencia de coincidencia entre nombre completo y nombre de usuario
+-   Presencia de URL externa
+
+Sorprende la ausencia en los antecedentes del número alto de seguidores.
+
+-   \* Nota: es un ejemplo de variable que por sí sola no decide nada, pero que combinada con otras puede dar lugar a una conclusión o a otra. Recomiendo fijarse en la variable private en las siguientes reglas:
+
+```{r}
+inspect(c(reglas_fake_verdaderas[5], reglas_fake_verdaderas[10], reglas_fake_verdaderas[18]))
+```
+
+### Predicción
+
+Una vez llegados aquí, habiendo analizado las reglas de asociación del dataset de entrenamiento, es momento de probar la calidad de las reglas con el dataset de test.
+
+Debemos comenzar discretizando los valores del dataset de test con los mismos intervalos que usamos en el dataset de entrenamiento, ya que las reglas que vamos a usar poseen estos intervalos:
+
+```{r}
+# Convertir dataset de test a data frame
+datos_testDF <- data.frame(datos_test)
+
+View(datos_test)
+
+# Guardar la columna fake en una variable aparte, para poder compararla al final con la predicción
+fake_originales <- datos_testDF$fake
+
+# Eliminar la columna fake
+datos_testDF$fake <- NULL
+
+View(datos_testDF)
+
+# Discretizar columnas numéricas con los mismos intervalos que en el dataset de entrenamiento
+
+# Iterar sobre cada fila de datos_testDF
+for (i in 1:nrow(datos_testDF)) {
+  # Para nums.length_username
+  if (datos_testDF[i, "nums.length_username"] < 0.184) {
+    datos_testDF[i, "nums.length_username"] <- "[0,0.184)"
+  } else if (datos_testDF[i, "nums.length_username"] < 0.368) {
+    datos_testDF[i, "nums.length_username"] <- "[0.184,0.368)"
+  } else if (datos_testDF[i, "nums.length_username"] < 0.552) {
+    datos_testDF[i, "nums.length_username"] <- "[0.368,0.552)"
+  } else if (datos_testDF[i, "nums.length_username"] < 0.736) {
+    datos_testDF[i, "nums.length_username"] <- "[0.552,0.736)"
+  } else {
+    datos_testDF[i, "nums.length_username"] <- "[0.736,0.92]"
+  }
+
+  # Para fullname_words
+  if (datos_testDF[i, "fullname_words"] < 1) {
+    datos_testDF[i, "fullname_words"] <- "[0,1)"
+  } else if (datos_testDF[i, "fullname_words"] < 2) {
+    datos_testDF[i, "fullname_words"] <- "[1,2)"
+  } else {
+    datos_testDF[i, "fullname_words"] <- "[2,12]"
+  }
+  
+  # Para nums.length_fullname
+  if (datos_testDF[i, "nums.length_fullname"] < 0.2) {
+    datos_testDF[i, "nums.length_fullname"] <- "[0,0.2)"
+  } else if (datos_testDF[i, "nums.length_fullname"] < 0.4) {
+    datos_testDF[i, "nums.length_fullname"] <- "[0.2,0.4)"
+  } else if (datos_testDF[i, "nums.length_fullname"] < 0.6) {
+    datos_testDF[i, "nums.length_fullname"] <- "[0.4,0.6)"
+  } else if (datos_testDF[i, "nums.length_fullname"] < 0.8) {
+    datos_testDF[i, "nums.length_fullname"] <- "[0.6,0.8)"
+  } else {
+    datos_testDF[i, "nums.length_fullname"] <- "[0.8,1]"
+  }
+  
+  # Para description_length
+  if (datos_testDF[i, "description_length"] < 5) {
+    datos_testDF[i, "description_length"] <- "[0,5)"
+  } else if (datos_testDF[i, "description_length"] < 43) {
+    datos_testDF[i, "description_length"] <- "[5,43)"
+  } else {
+    datos_testDF[i, "description_length"] <- "[43,150]"
+  }
+  
+  # Para posts
+  if (datos_testDF[i, "posts"] < 1) {
+    datos_testDF[i, "posts"] <- "[0,1)"
+  } else if (datos_testDF[i, "posts"] < 5) {
+    datos_testDF[i, "posts"] <- "[1,5)"
+  } else if (datos_testDF[i, "posts"] < 17.6) {
+    datos_testDF[i, "posts"] <- "[5,17.6)"
+  } else if (datos_testDF[i, "posts"] < 63.7) {
+    datos_testDF[i, "posts"] <- "[17.6,63.7)"
+  } else if (datos_testDF[i, "posts"] < 187) {
+    datos_testDF[i, "posts"] <- "[63.7,187)"
+  } else {
+    datos_testDF[i, "posts"] <- "[187,7.39e+03]"
+  }
+  
+  # Para followers
+  if (datos_testDF[i, "followers"] < 10.5) {
+    datos_testDF[i, "followers"] <- "[0,10.5)"
+  } else if (datos_testDF[i, "followers"] < 26) {
+    datos_testDF[i, "followers"] <- "[10.5,26)"
+  } else if (datos_testDF[i, "followers"] < 49) {
+    datos_testDF[i, "followers"] <- "[26,49)"
+  } else if (datos_testDF[i, "followers"] < 78) {
+    datos_testDF[i, "followers"] <- "[49,78)"
+  } else if (datos_testDF[i, "followers"] < 150) {
+    datos_testDF[i, "followers"] <- "[78,150)"
+  } else if (datos_testDF[i, "followers"] < 271) {
+    datos_testDF[i, "followers"] <- "[150,271)"
+  } else if (datos_testDF[i, "followers"] < 496) {
+    datos_testDF[i, "followers"] <- "[271,496)"
+  } else if (datos_testDF[i, "followers"] < 916) {
+    datos_testDF[i, "followers"] <- "[496,916)"
+  } else if (datos_testDF[i, "followers"] < 2580) {
+    datos_testDF[i, "followers"] <- "[916,2.58e+03)"
+  } else {
+    datos_testDF[i, "followers"] <- "[2.58e+03,1.53e+07]"
+  }
+  
+  # Para follows
+  if (datos_testDF[i, "follows"] < 26) {
+    datos_testDF[i, "follows"] <- "[0,26)"
+  } else if (datos_testDF[i, "follows"] < 71) {
+    datos_testDF[i, "follows"] <- "[26,71)"
+  } else if (datos_testDF[i, "follows"] < 159) {
+    datos_testDF[i, "follows"] <- "[71,159)"
+  } else if (datos_testDF[i, "follows"] < 322) {
+    datos_testDF[i, "follows"] <- "[159,322)"
+  } else if (datos_testDF[i, "follows"] < 521) {
+    datos_testDF[i, "follows"] <- "[322,521)"
+  } else if (datos_testDF[i, "follows"] < 904) {
+    datos_testDF[i, "follows"] <- "[521,904)"
+  } else {
+    datos_testDF[i, "follows"] <- "[904,7.5e+03]"
+  }
+  
+}
+
+# Concertir las columnas no binarias (las que ahora tienen intervalos) a tipo factor
+columnas_intervalo <- c("nums.length_username", "fullname_words", "nums.length_fullname", "description_length", "posts", "followers", "follows")
+datos_testDF[, columnas_intervalo] <- lapply(datos_testDF[, columnas_intervalo], factor)
+
+# Convertir columnas binarias a factor
+columnas_binarias <- c(1, 5, 7, 8)
+datos_testDF[, columnas_binarias] <- lapply(datos_testDF[, columnas_binarias], factor)
+
+# Ver datos_testDF después de la conversión
+head(datos_testDF)
+```
+
+Como vemos, todas las variables numéricas han pasado a tener datos de intervalo, y todas las columnas han pasado a ser de tipo factor.
+
+Ahora toca aplicar las reglas a los datos de test, y realizar la predicción:
+
+```{r}
+# Convertir datos_test a transacciones
+Tdatos_test <- as(datos_testDF, "transactions")
+
+# Crear una columna vacía para las predicciones
+datos_testDF$fake_predict_RA <- NA
+
+# Aplicar las reglas a cada transacción en datos_test
+for (i in 1:length(Tdatos_test)) {
+  # Obtener la transacción de esa fila
+  trans <- Tdatos_test[i]
+  
+  # Evaluar las reglas con el antecedente correspondiente: si el antecedente es subconjunto de la transacción actual, asignar el consecuente de la primera regla que lo cumpla (están ordenadas por confidence) a 'fake_predict_RA'
+  matches <- is.subset(lhs(reglas_fake_verdaderas), trans)
+  
+  # Si alguna regla se cumple, asignar el consecuente correspondiente a 'fake_predict_RA'
+  if (any(matches)) {
+    # Obtener el consecuente de la primera regla que se cumple
+    matching_rule <- reglas_fake_verdaderas[which(matches)[1]]
+    fake_value <- labels(rhs(matching_rule))[1]
+    
+    # Asignar el valor predicho
+    datos_testDF$fake_predict_RA[i] <- sub("fake=", "", fake_value)
+  }
+  
+  # Si ninguna regla cuenta con un antecedente que sea subconjunto de la transacción actual, realizar una heurística (árbol de decisión) con las conclusiones extraídas de las reglas
+  else {
+    # Si la cuenta tiene URL externa, es verdadera
+    if (datos_test$external_URL[i] == 1) {
+      datos_testDF$fake_predict_RA[i] <- 0
+      # Si la cuenta no tiene foto de perfil, es falsa
+    } else if (datos_test$profile_pic[i] == 0) {
+      datos_testDF$fake_predict_RA[i] <- 1
+      # Si la cuenta tiene menos de 250 seguido, es falsa
+    } else if (datos_test$followers[i] < 250) {
+      datos_testDF$fake_predict_RA[i] <- 1
+      # En otro caso, consideramos que es verdadera
+    } else {
+      datos_testDF$fake_predict_RA[i] <- 0
+    }
+  }
+}
+```
+
+Echemos un vistazo a las primeras filas de datos_testDF para comprobar que la predicción se ha realizado correctamente:
+
+```{r}
+# Mostrar las primeras filas de datos_testDF
+head(datos_testDF)
+
+#View(datos_testDF)
+```
+
+Vemos que hay predicciones en la columna fake_predict_RA, aunque muchas de ellas (haciendo el View) contienen caracteres '{' y '}'. Deshagámonos de ellos y convirtamos la columna a numérica para poder compararla con la columna fake original:
+
+```{r}
+# Convertir datos_testDF$fake_predict_RA para eliminar los caracteres '{' y '}'
+datos_testDF$fake_predict_RA <- gsub("\\{|\\}", "", datos_testDF$fake_predict_RA)
+
+# Convertir datos_testDF$fake_predict_RA a numérico
+datos_testDF$fake_predict_RA <- as.numeric(datos_testDF$fake_predict_RA)
+
+# Mostrar las primeras filas de datos_testDF
+head(datos_testDF)
+```
+
+Misión cumplida. Ahora, revisemos si hay valores NA en esa columna:
+
+```{r}
+# Contar los valores NA de la columna fake_predict_RA
+cat("fake_predict_RA tiene ", sum(is.na(datos_testDF$fake_predict_RA)), " valores NA.")
+```
+
+Parece que todo va bien. Creemos un nuevo dataset únicamente formado por las predicciones y el valor real de falsedad:
+
+```{r}
+datos_test_predicciones <- data.frame(fake = fake_originales, fake_predict_RA = datos_testDF$fake_predict_RA)
+View(datos_test_predicciones)
+# Guardar el data frame en un archivo CSV
+write.csv(datos_test_predicciones, "datos_test_predicciones.csv", row.names = FALSE)
+```
+
+Es momento de calcular el porcentaje de éxito en la predicción de cuentas falsas, verdaderas y en general:
+
+```{r}
+# Contar el número de predicciones correctas cuando la cuenta es falsa
+predicciones_correctas_falsas <- sum(datos_test_predicciones$fake_predict_RA == datos_test_predicciones$fake & datos_test_predicciones$fake == 1)
+
+# Calcular el porcentaje de éxito en la predicción de cuentas falsas
+total_falsas <- sum(datos_test_predicciones$fake == 1)
+porcentaje_exito_falsas <- (predicciones_correctas_falsas / total_falsas) * 100
+
+# Contar el número de predicciones correctas cuando la cuenta es verdadera
+predicciones_correctas_verdaderas <- sum(datos_test_predicciones$fake_predict_RA == datos_test_predicciones$fake & datos_test_predicciones$fake == 0)
+
+# Calcular el porcentaje de éxito en la predicción de cuentas verdaderas
+total_verdaderas <- sum(datos_test_predicciones$fake == 0)
+porcentaje_exito_verdaderas <- (predicciones_correctas_verdaderas / total_verdaderas) * 100
+
+# Contar el número de predicciones correctas generales
+predicciones_correctas <- sum(datos_test_predicciones$fake_predict_RA == datos_test_predicciones$fake)
+
+# Calcular el porcentaje de éxito general
+total_predicciones <- nrow(datos_test_predicciones)
+porcentaje_exito_general <- (predicciones_correctas / total_predicciones) * 100
+
+# Imprimir el resultado
+cat("El porcentaje de éxito en la predicción de cuentas falsas es:", porcentaje_exito_falsas, "%\n", "El porcentaje de éxito en la predicción de cuentas verdaderas es:", porcentaje_exito_verdaderas, "%\n", "El porcentaje de éxito general en la predicción de cuentas es:", porcentaje_exito_general, "%\n")
+```
+
+Como vemos, los porcentajes de éxito de predicción de la veracidad de la cuenta basados en las reglas de asociación son altos. Podrían mejorarse (especialmente el porcentaje para cuentas verdaderas), pero es un resultado satisfactorio.
+
+```{r}
+# Crear dataset con los porcentajes
+exito_predicciones <- data.frame(tipo = c("Reglas de Asociación"), 'Éxito_cuentas_falsas' = c(porcentaje_exito_falsas), 'Éxito_cuentas_verdaderas' = c(porcentaje_exito_verdaderas), 'Éxito_general' = c(porcentaje_exito_general))
+exito_predicciones
+
+# Guardar el data frame en un archivo CSV
+write.csv(exito_predicciones, "exito_predicciones.csv", row.names = FALSE)
+```
+
+### ¿Qué patrones encontramos conociendo la veracidad o falsedad de la cuenta?
+
+En cuanto al objetivo del proyecto, nos importa más el apartado anterior (averiguar las causas que provocan que una cuenta sea verdadera o falsa para poder identificar cuentas falsas según sus parámetros), pero también resulta interesante, al menos, ver las reglas en sentido contrario, es decir, sabiendo que una cuenta es verdadera o falsa, ¿qué valores toman los demás atributos?
+
+No me detendré a hacer un análisis profundo de este apartado, pero encontremos y observemos las reglas resultantes, comenzando con cuentas falsas:
+
+```{r}
+reglas_fake_lhs <- subset(reglas, subset = lhs %in% "fake=1")
+length(reglas_fake_lhs)
+```
+
+```{r}
+inspect(reglas_fake_lhs)
+```
+
+Destaca la repetida aparición de valores bajos de longitud de la descripción en el consecuente, cuando se combina la falsedad de la cuenta con otros atributos en el antecedente. No extraemos mucha información nueva.
+
+Veamos estas reglas para cuentas verdaderas:
+
+```{r}
+reglas_verdaderas_lhs <- subset(reglas, subset = lhs %in% "fake=0")
+length(reglas_verdaderas_lhs)
+```
+
+```{r}
+inspect(reglas_verdaderas_lhs)
+```
+
+Destaca la repetida aparición en los consecuentes de la presencia de foto de perfil, la ausencia de coincidencia de nombre completo y nombre de usuario y el primer intervalo de valores de los ratios de números en la longitud del username y del fullname.
+

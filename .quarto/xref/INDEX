@@ -1,0 +1,20 @@
+{
+  "index.qmd": {
+    "index.html": "676fea47"
+  },
+  "visualizacion.qmd": {
+    "visualizacion.html": "7346f2a9"
+  },
+  "reglas_asociacion.qmd": {
+    "reglas_asociacion.html": "b99fbfe3"
+  },
+  "fca.qmd": {
+    "fca.html": "24cbe7b6"
+  },
+  "regresion.qmd": {
+    "regresion.html": "857e8004"
+  },
+  "conclusion.qmd": {
+    "conclusion.html": "3a9a9714"
+  }
+}

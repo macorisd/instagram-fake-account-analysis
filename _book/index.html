@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Macorís Decena Giménez">
+<meta name="dcterms.date" content="2024-05-29">
+
+<title>Proyecto de análisis de cuentas falsas en Instagram</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./visualizacion.html" rel="next">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Importación del dataset y Análisis Exploratorio</span></a></li></ol></nav>
+      <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+      </a>
+      <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Proyecto de análisis de cuentas falsas en Instagram</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Importación del dataset y Análisis Exploratorio</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./visualizacion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Visualización</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reglas_asociacion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Reglas de Asociación</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./fca.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Formal Concept Analysis</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./regresion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regresión</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./conclusion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Conclusión</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#importación-del-dataset-y-análisis-exploratorio" id="toc-importación-del-dataset-y-análisis-exploratorio" class="nav-link active" data-scroll-target="#importación-del-dataset-y-análisis-exploratorio"><span class="header-section-number">1</span> Importación del dataset y Análisis Exploratorio</a>
+  <ul class="collapse">
+  <li><a href="#dataset" id="toc-dataset" class="nav-link" data-scroll-target="#dataset"><span class="header-section-number">1.1</span> Dataset</a></li>
+  <li><a href="#análisis-exploratorio-de-datos" id="toc-análisis-exploratorio-de-datos" class="nav-link" data-scroll-target="#análisis-exploratorio-de-datos"><span class="header-section-number">1.2</span> Análisis exploratorio de datos</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Proyecto de análisis de cuentas falsas en Instagram</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Macorís Decena Giménez </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">May 29, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="importación-del-dataset-y-análisis-exploratorio" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Importación del dataset y Análisis Exploratorio</h1>
+<section id="dataset" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="dataset"><span class="header-section-number">1.1</span> Dataset</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Librerías y datasets</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fcaR)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(psych)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arules)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>datos <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"train.csv"</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(datos)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>datos_test <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"test.csv"</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(datos_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="análisis-exploratorio-de-datos" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="análisis-exploratorio-de-datos"><span class="header-section-number">1.2</span> Análisis exploratorio de datos</h2>
+<p>Para analizar cualquier dataset, primero es vital explorar sus datos, para comprender mejor el conjunto de datos antes de aplicar técnicas de análisis y/o predictivas.</p>
+<p>Primero, echemos un vistazo a las primeras filas del dataset, para hacernos una idea de las columnas con las que trabajamos, y algunos de sus valores:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(datos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 12
+  `profile pic` `nums/length username` `fullname words` `nums/length fullname`
+          &lt;dbl&gt;                  &lt;dbl&gt;            &lt;dbl&gt;                  &lt;dbl&gt;
+1             1                   0.27                0                      0
+2             1                   0                   2                      0
+3             1                   0.1                 2                      0
+4             1                   0                   1                      0
+5             1                   0                   2                      0
+6             1                   0                   4                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, `description length` &lt;dbl&gt;,
+#   `external URL` &lt;dbl&gt;, private &lt;dbl&gt;, `#posts` &lt;dbl&gt;, `#followers` &lt;dbl&gt;,
+#   `#follows` &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>Comprobemos, también, si el dataset de test posee las mismas columnas:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(datos_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 12
+  `profile pic` `nums/length username` `fullname words` `nums/length fullname`
+          &lt;dbl&gt;                  &lt;dbl&gt;            &lt;dbl&gt;                  &lt;dbl&gt;
+1             1                   0.33                1                   0.33
+2             1                   0                   5                   0   
+3             1                   0                   2                   0   
+4             1                   0                   1                   0   
+5             1                   0.5                 1                   0   
+6             1                   0                   1                   0   
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, `description length` &lt;dbl&gt;,
+#   `external URL` &lt;dbl&gt;, private &lt;dbl&gt;, `#posts` &lt;dbl&gt;, `#followers` &lt;dbl&gt;,
+#   `#follows` &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>Echando un vistazo a estas salidas, personalmente no me agrada la presencia de espacios en los nombres de las columnas. Renombremos las que presentan espacios o caracteres especiales:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>datos <span class="ot">&lt;-</span> <span class="fu">rename</span>(datos, <span class="at">profile_pic=</span><span class="st">`</span><span class="at">profile pic</span><span class="st">`</span>, <span class="st">`</span><span class="at">nums/length_username</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">nums/length username</span><span class="st">`</span>, <span class="at">fullname_words=</span><span class="st">`</span><span class="at">fullname words</span><span class="st">`</span>, <span class="st">`</span><span class="at">nums/length_fullname</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">nums/length fullname</span><span class="st">`</span>, <span class="at">description_length=</span><span class="st">`</span><span class="at">description length</span><span class="st">`</span>, <span class="at">external_URL=</span><span class="st">`</span><span class="at">external URL</span><span class="st">`</span>, <span class="at">posts=</span><span class="st">`</span><span class="at">#posts</span><span class="st">`</span>, <span class="at">followers=</span><span class="st">`</span><span class="at">#followers</span><span class="st">`</span>, <span class="at">follows=</span><span class="st">`</span><span class="at">#follows</span><span class="st">`</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>datos_test <span class="ot">&lt;-</span> <span class="fu">rename</span>(datos_test, <span class="at">profile_pic=</span><span class="st">`</span><span class="at">profile pic</span><span class="st">`</span>, <span class="st">`</span><span class="at">nums/length_username</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">nums/length username</span><span class="st">`</span>, <span class="at">fullname_words=</span><span class="st">`</span><span class="at">fullname words</span><span class="st">`</span>, <span class="st">`</span><span class="at">nums/length_fullname</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">nums/length fullname</span><span class="st">`</span>, <span class="at">description_length=</span><span class="st">`</span><span class="at">description length</span><span class="st">`</span>, <span class="at">external_URL=</span><span class="st">`</span><span class="at">external URL</span><span class="st">`</span>, <span class="at">posts=</span><span class="st">`</span><span class="at">#posts</span><span class="st">`</span>, <span class="at">followers=</span><span class="st">`</span><span class="at">#followers</span><span class="st">`</span>, <span class="at">follows=</span><span class="st">`</span><span class="at">#follows</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>A partir de ahora, exploraremos únicamente el dataset de entrenamiento, y dejaremos el de test para probar las conclusiones que saquemos de este análisis.</p>
+<p>Una vez ajustados los nombres, resulta especialmente útil echar un vistazo a la estructura del dataset:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(datos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>spc_tbl_ [576 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ profile_pic         : num [1:576] 1 1 1 1 1 1 1 1 1 1 ...
+ $ nums/length_username: num [1:576] 0.27 0 0.1 0 0 0 0 0 0 0 ...
+ $ fullname_words      : num [1:576] 0 2 2 1 2 4 2 2 0 2 ...
+ $ nums/length_fullname: num [1:576] 0 0 0 0 0 0 0 0 0 0 ...
+ $ name==username      : num [1:576] 0 0 0 0 0 0 0 0 0 0 ...
+ $ description_length  : num [1:576] 53 44 0 82 0 81 50 0 71 40 ...
+ $ external_URL        : num [1:576] 0 0 0 0 0 1 0 0 0 1 ...
+ $ private             : num [1:576] 0 0 1 0 1 0 0 0 0 0 ...
+ $ posts               : num [1:576] 32 286 13 679 6 344 16 33 72 213 ...
+ $ followers           : num [1:576] 1000 2740 159 414 151 ...
+ $ follows             : num [1:576] 955 533 98 651 126 ...
+ $ fake                : num [1:576] 0 0 0 0 0 0 0 0 0 0 ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   `profile pic` = col_double(),
+  ..   `nums/length username` = col_double(),
+  ..   `fullname words` = col_double(),
+  ..   `nums/length fullname` = col_double(),
+  ..   `name==username` = col_double(),
+  ..   `description length` = col_double(),
+  ..   `external URL` = col_double(),
+  ..   private = col_double(),
+  ..   `#posts` = col_double(),
+  ..   `#followers` = col_double(),
+  ..   `#follows` = col_double(),
+  ..   fake = col_double()
+  .. )
+ - attr(*, "problems")=&lt;externalptr&gt; </code></pre>
+</div>
+</div>
+<p>Es posible extraer información importante a raíz de la salida anterior:</p>
+<ol type="1">
+<li>El dataset tiene 12 columnas, y 576 filas, datos que podemos confirmar fácilmente con los siguientes comandos:</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Mostrar el número de columnas</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ncol</span>(datos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 12</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Mostrar el número de filas</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(datos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 576</code></pre>
+</div>
+</div>
+<ol start="2" type="1">
+<li>Todas las columnas del dataset son de tipo numérico (aunque, ciertamente, algunas columnas representan un booleano con valor 0/1, es decir, están binarizadas). Podría ser interesante conocer qué variables son binarias:</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Identificar las columnas binarias</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>binarias <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="fu">where</span>(<span class="sc">~</span> <span class="fu">all</span>(. <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)))) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>()</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Mostrar los nombres de las columnas binarias</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>binarias</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "profile_pic"    "name==username" "external_URL"   "private"       
+[5] "fake"          </code></pre>
+</div>
+</div>
+<p>Una vez conocemos esto, pasemos a observar un resumen estadístico por columnas del dataset:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Resumen estadístico del dataset</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(datos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  profile_pic     nums/length_username fullname_words  nums/length_fullname
+ Min.   :0.0000   Min.   :0.0000       Min.   : 0.00   Min.   :0.00000     
+ 1st Qu.:0.0000   1st Qu.:0.0000       1st Qu.: 1.00   1st Qu.:0.00000     
+ Median :1.0000   Median :0.0000       Median : 1.00   Median :0.00000     
+ Mean   :0.7014   Mean   :0.1638       Mean   : 1.46   Mean   :0.03609     
+ 3rd Qu.:1.0000   3rd Qu.:0.3100       3rd Qu.: 2.00   3rd Qu.:0.00000     
+ Max.   :1.0000   Max.   :0.9200       Max.   :12.00   Max.   :1.00000     
+ name==username    description_length  external_URL       private      
+ Min.   :0.00000   Min.   :  0.00     Min.   :0.0000   Min.   :0.0000  
+ 1st Qu.:0.00000   1st Qu.:  0.00     1st Qu.:0.0000   1st Qu.:0.0000  
+ Median :0.00000   Median :  0.00     Median :0.0000   Median :0.0000  
+ Mean   :0.03472   Mean   : 22.62     Mean   :0.1163   Mean   :0.3819  
+ 3rd Qu.:0.00000   3rd Qu.: 34.00     3rd Qu.:0.0000   3rd Qu.:1.0000  
+ Max.   :1.00000   Max.   :150.00     Max.   :1.0000   Max.   :1.0000  
+     posts          followers           follows            fake    
+ Min.   :   0.0   Min.   :       0   Min.   :   0.0   Min.   :0.0  
+ 1st Qu.:   0.0   1st Qu.:      39   1st Qu.:  57.5   1st Qu.:0.0  
+ Median :   9.0   Median :     150   Median : 229.5   Median :0.5  
+ Mean   : 107.5   Mean   :   85307   Mean   : 508.4   Mean   :0.5  
+ 3rd Qu.:  81.5   3rd Qu.:     716   3rd Qu.: 589.5   3rd Qu.:1.0  
+ Max.   :7389.0   Max.   :15338538   Max.   :7500.0   Max.   :1.0  </code></pre>
+</div>
+</div>
+<p>De esta salida extraemos la siguiente información importante:</p>
+<ul>
+<li><p>profile_pic: el 70,14% de las cuentas tiene foto de perfil. Este dato podría ser importante, ya que muchas cuentas falsas no cuentan con foto de perfil.</p></li>
+<li><p>nums/length_username: el 16,38% de la longitud de los nombres de las cuentas está ocupado por números. Destaca el valor máximo del 92% en una cuenta particular.</p></li>
+<li><p>fullname_words: destaca la media de 1,46, que, intuitivamente, sería lo normal, pues los nombres completos que definimos en redes sociales normalmente contienen una o dos palabras.</p></li>
+<li><p>nums/length_fullname: el 3,6% de la longitud de los nombres completos de las cuentas está ocupado por números. Destaca, de nuevo, un valor alto: un 1 (todo números en el nombre completo, lo cual es extraño).</p></li>
+<li><p>name==username: el 3,4% de las cuentas muestran coincidencia literal en el nombre de usuario y el nombre completo. Este valor tan bajo es bastante normal, puesto que los nombres de usuario son únicos, y es difícil hacer que coincidan con el nombre completo.</p></li>
+<li><p>description_length: destaca la mediana de 0, es decir, que hay muchísimas cuentas del dataset sin ningún caracter en la descripción. La media también es baja en comparación al valor máximo (150), que probablemente sea el máximo permitido por Instagram.</p></li>
+<li><p>external_URL: de nuevo, la mediana es 0, puesto que sólo el 11,63% de las cuentas tienen un link en su biografía. Este dato podría ser especialmente interesante para la predicción de cuentas falsas, pues muchas de ellas, en la realidad, poseen URLs a sitios fraudulentos o promocionales.</p></li>
+<li><p>private: el 38% de las cuentas son privadas.</p></li>
+<li><p>posts: la media es alta (107,5) para lo que cabría esperar. Es un valor interesante, ya que las cuentas falsas no suelen tener muchas fotos publicadas.</p></li>
+<li><p>followers: la media, de nuevo, es alta (85307), y también es un valor significativo, dado que, probablemente, ninguna cuenta falsa estará en los percentiles superiores en cuanto a seguidores. Por ejemplo, el valor máximo es de más de 15 millones de seguidores, y personalmente apostaría mi aprobado en la asignatura a que esa cuenta particular no es falsa.</p></li>
+<li><p>follows: la media (508,4) es un valor razonable.</p></li>
+<li><p>fake: exactamente la mitad de las cuentas del dataset son falsas.</p></li>
+</ul>
+<p>Como conclusiones interesantes, tenemos:</p>
+<ul>
+<li><p>Varias variables (posts, follows, followers) muestran una distribución con una media mucho mayor que la mediana, lo que sugiere que hay ciertas cuentas con valores muy altos en estos parámetros.</p></li>
+<li><p>El dataset está equilibrado, habiendo un 50% de cuentas falsas. Esto será útil para el análisis, puesto que un dataset más desequilibrado podría dar lugar a extrapolaciones erróneas de los datos.</p></li>
+<li><p>Algunas variables (profile_pic, posts, followers…) pueden ser altamente reveladoras para decidir si una cuenta es falsa o no, con lo que deberían ser más significativas en el apartado de reglas de asociación.</p></li>
+</ul>
+<p>Una vez hemos examinado los datos estadísticos de las variables, también resulta interesante conocer la presencia de valores nulos en las columnas:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Contar valores nulos en cada columna</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>na_por_columnas <span class="ot">&lt;-</span> <span class="fu">sapply</span>(datos, <span class="cf">function</span>(x) <span class="fu">sum</span>(<span class="fu">is.na</span>(x)))</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>na_por_columnas</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         profile_pic nums/length_username       fullname_words 
+                   0                    0                    0 
+nums/length_fullname       name==username   description_length 
+                   0                    0                    0 
+        external_URL              private                posts 
+                   0                    0                    0 
+           followers              follows                 fake 
+                   0                    0                    0 </code></pre>
+</div>
+</div>
+<p>Como vemos, es genial que no haya valores nulos en todo el dataset, puesto que su presencia afecta de forma negativa a los resultados. Los valores nulos pueden distorsionar las estadísticas descriptivas (como las vistas anteriormente), llevando a conclusiones incorrectas, así como a pérdida de información y de patrones importantes.</p>
+<p>A continuación, con objeto de analizar los valores más extremos del dataset, listemos las 5 filas con mayores y menores valores de cada variable no binaria:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de nums/length_username</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>max_nums_length_username <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(datos<span class="sc">$</span><span class="st">`</span><span class="at">nums/length_username</span><span class="st">`</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>max_nums_length_username</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0.92              1                   1   
+ 2           1                   0.91              1                   0   
+ 3           1                   0.91              1                   0   
+ 4           1                   0.89              1                   0.89
+ 5           0                   0.89              0                   0   
+ 6           0                   0.89              0                   0   
+ 7           1                   0.88              1                   0   
+ 8           0                   0.88              1                   1   
+ 9           0                   0.88              1                   1   
+10           0                   0.86              2                   0.18
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de nums/length_username</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>min_nums_length_username <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(datos<span class="sc">$</span><span class="st">`</span><span class="at">nums/length_username</span><span class="st">`</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>min_nums_length_username</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                      0              2                      0
+ 2           1                      0              1                      0
+ 3           1                      0              2                      0
+ 4           1                      0              4                      0
+ 5           1                      0              2                      0
+ 6           1                      0              2                      0
+ 7           1                      0              0                      0
+ 8           1                      0              2                      0
+ 9           1                      0              2                      0
+10           1                      0              2                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo. Sin embargo, no podemos concluir mucho a partir de esta salida, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de fullname_words</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>max_fullname_words <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(fullname_words)) <span class="sc">%&gt;%</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>max_fullname_words</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                12                      0
+ 2           1                   0                10                      0
+ 3           1                   0                 6                      0
+ 4           1                   0                 6                      0
+ 5           1                   0.36              5                      0
+ 6           1                   0.09              5                      0
+ 7           1                   0.22              5                      0
+ 8           1                   0                 5                      0
+ 9           1                   0                 4                      0
+10           1                   0                 4                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 9 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de fullname_words</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>min_fullname_words <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(fullname_words) <span class="sc">%&gt;%</span> </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>min_fullname_words</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0.27              0                      0
+ 2           1                   0                 0                      0
+ 3           1                   0                 0                      0
+ 4           1                   0.13              0                      0
+ 5           1                   0.33              0                      0
+ 6           1                   0                 0                      0
+ 7           1                   0                 0                      0
+ 8           1                   0                 0                      0
+ 9           1                   0                 0                      0
+10           1                   0                 0                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser significativo, con la conclusión de que los extremos están ocupados por cuentas verdaderas, pero no debemos precipitarnos con tal conclusión. No podemos concluir mucho a partir de esta salida particular, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de nums/length_fullname</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>max_nums_length_fullname <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(datos<span class="sc">$</span><span class="st">`</span><span class="at">nums/length_fullname</span><span class="st">`</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>max_nums_length_fullname</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           0                   0.88              1                   1   
+ 2           0                   0.88              1                   1   
+ 3           1                   0.92              1                   1   
+ 4           1                   0.89              1                   0.89
+ 5           0                   0.57              1                   0.57
+ 6           0                   0.5               1                   0.5 
+ 7           1                   0.6               1                   0.5 
+ 8           1                   0.46              1                   0.5 
+ 9           0                   0.46              1                   0.46
+10           1                   0.58              1                   0.44
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de nums/length_fullname</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>min_nums_length_fullname <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(datos<span class="sc">$</span><span class="st">`</span><span class="at">nums/length_fullname</span><span class="st">`</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>min_nums_length_fullname</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0.27              0                      0
+ 2           1                   0                 2                      0
+ 3           1                   0.1               2                      0
+ 4           1                   0                 1                      0
+ 5           1                   0                 2                      0
+ 6           1                   0                 4                      0
+ 7           1                   0                 2                      0
+ 8           1                   0                 2                      0
+ 9           1                   0                 0                      0
+10           1                   0                 2                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo, aunque no podemos concluir mucho a partir de esta salida, ya que podría haber filas de cuentas falsas con valor 0 en esta columna, pero que no aparezcan aquí.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de description_length</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>max_description_length <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(description_length)) <span class="sc">%&gt;%</span> </span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>max_description_length</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 4                      0
+ 2           1                   0.08              2                      0
+ 3           1                   0                 2                      0
+ 4           1                   0                 2                      0
+ 5           1                   0                 4                      0
+ 6           1                   0                 3                      0
+ 7           1                   0                 2                      0
+ 8           1                   0                 0                      0
+ 9           1                   0                 3                      0
+10           1                   0                 1                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, 7 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser importante, aunque no podemos saltar a conclusiones.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de description_length</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>min_description_length <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(description_length) <span class="sc">%&gt;%</span> </span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>min_description_length</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0.1               2                      0
+ 2           1                   0                 2                      0
+ 3           1                   0                 2                      0
+ 4           1                   0                 2                      0
+ 5           1                   0                 3                      0
+ 6           1                   0                 0                      0
+ 7           1                   0                 6                      0
+ 8           1                   0.13              0                      0
+ 9           1                   0.33              0                      0
+10           1                   0                 2                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. No podemos concluir nada en este caso, ya que las 10 filas tienen 0 de longitud de descripción (podría haber cuentas falsas con 0 que no aparezcan aquí).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de posts</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>max_posts <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(posts)) <span class="sc">%&gt;%</span> </span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>max_posts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 0                      0
+ 2           1                   0                 4                      0
+ 3           1                   0.29              3                      0
+ 4           1                   0                 1                      0
+ 5           1                   0                 2                      0
+ 6           1                   0                 2                      0
+ 7           1                   0                 2                      0
+ 8           1                   0                 2                      0
+ 9           1                   0                 2                      0
+10           1                   0                 2                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de posts</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>min_posts <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(posts) <span class="sc">%&gt;%</span> </span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>min_posts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 2                      0
+ 2           1                   0                 1                      0
+ 3           1                   0                 2                      0
+ 4           1                   0                 2                      0
+ 5           0                   0.22              1                      0
+ 6           0                   0.38              1                      0
+ 7           0                   0.31              2                      0
+ 8           0                   0                 1                      0
+ 9           0                   0                 2                      0
+10           0                   0.33              1                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, 6 de las 10 filas son de cuentas falsas. No podemos concluir nada, ya que, además, el valor de la variable en estas 10 filas es 0, y podríamos estar perdiendo información si hay más filas con 0 que no aparezcan aquí.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de followers</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>max_followers <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(followers)) <span class="sc">%&gt;%</span> </span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>max_followers</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 0                      0
+ 2           1                   0                 4                      0
+ 3           1                   0                 2                      0
+ 4           1                   0.18              2                      0
+ 5           1                   0                 1                      0
+ 6           1                   0                 0                      0
+ 7           1                   0                 2                      0
+ 8           1                   0                 4                      0
+ 9           1                   0                 2                      0
+10           1                   0                 3                      0
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas verdaderas. Este parámetro podría ser bastante significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de followers</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>min_followers <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(followers) <span class="sc">%&gt;%</span> </span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>min_followers</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           0                   0.22              1                   0.22
+ 2           0                   0                 1                   0   
+ 3           1                   0.25              1                   0   
+ 4           0                   0                 0                   0   
+ 5           1                   0                 1                   0   
+ 6           0                   0                 1                   0   
+ 7           0                   0.07              1                   0   
+ 8           0                   0.33              1                   0.33
+ 9           1                   0.44              1                   0   
+10           0                   0.1               1                   0   
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo. La intuición, además, me dice que es extraño tener una cuenta verdadera con 0 seguidores, pero tampoco podemos extraer conclusiones precisas, puesto que en las 10 filas el valor de seguidores es 0, y podría haber más filas en el dataset con un valor 0 que no aparezcan aquí.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con máximo valor de follows</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>max_follows <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(follows)) <span class="sc">%&gt;%</span> </span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>max_follows</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 4                    0  
+ 2           1                   0                 1                    0  
+ 3           1                   0.14              2                    0  
+ 4           0                   0                 1                    0  
+ 5           1                   0                 2                    0  
+ 6           1                   0                 2                    0  
+ 7           1                   0.1               1                    0.1
+ 8           1                   0.43              2                    0  
+ 9           1                   0                 2                    0  
+10           1                   0.2               2                    0  
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, 7 de las 10 filas son de cuentas verdaderas. Este parámetro podría ser significativo, aunque habría que analizarlo con más detenimiento.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 filas con mínimo valor de follows</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>min_follows <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span> </span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(follows) <span class="sc">%&gt;%</span> </span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>min_follows</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 12
+   profile_pic `nums/length_username` fullname_words `nums/length_fullname`
+         &lt;dbl&gt;                  &lt;dbl&gt;          &lt;dbl&gt;                  &lt;dbl&gt;
+ 1           1                   0                 3                   0   
+ 2           0                   0                 0                   0   
+ 3           0                   0.1               1                   0   
+ 4           0                   0.67              1                   0   
+ 5           0                   0.25              1                   0   
+ 6           0                   0.33              1                   0   
+ 7           0                   0.44              1                   0   
+ 8           0                   0.27              1                   0   
+ 9           0                   0.28              1                   0.24
+10           0                   0.5               1                   0.4 
+# ℹ 8 more variables: `name==username` &lt;dbl&gt;, description_length &lt;dbl&gt;,
+#   external_URL &lt;dbl&gt;, private &lt;dbl&gt;, posts &lt;dbl&gt;, followers &lt;dbl&gt;,
+#   follows &lt;dbl&gt;, fake &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>como se puede observar, 9 de las 10 filas son de cuentas falsas. Este parámetro podría ser bastante significativo. La intuición, además, me dice que es extraño tener una cuenta verdadera con 0 cuentas seguidas, pero tampoco podemos extraer conclusiones precisas, puesto que en las 10 filas el valor de cuentas seguidas es 0, y podría haber más filas en el dataset con un valor 0 que no aparezcan aquí.</p>
+<p>Las conclusiones más precisas (aunque pendientes de demostrar en apartados posteriores) que extraemos de los valores extremo son en cuanto a las variables:</p>
+<ul>
+<li><p>nums/length_username: los valores altos los tienen las cuentas falsas.</p></li>
+<li><p>fullname_words: los valores altos los tienen las cuentas verdaderas.</p></li>
+<li><p>nums/length_fullname: los valores altos los tienen las cuentas falsas.</p></li>
+<li><p>posts: los valores altos los tienen las cuentas verdaderas.</p></li>
+<li><p>followers: los valores altos los tienen las cuentas verdaderas.</p></li>
+</ul>
+<p>Para finalizar con el análisis exploratorio, y guardando cierta relación con el último conjunto de comandos, echemos un vistazo al contenido de las variables</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calcula el promedio de cada variable para las cuentas falsas y reales</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>fake_comparacion <span class="ot">&lt;-</span> datos <span class="sc">%&gt;%</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(fake) <span class="sc">%&gt;%</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">profile_pic_ratio =</span> <span class="fu">mean</span>(profile_pic),</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_nums_length_username =</span> <span class="fu">mean</span>(<span class="st">`</span><span class="at">nums/length_username</span><span class="st">`</span>),</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_fullname_words =</span> <span class="fu">mean</span>(fullname_words),</span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_nums_length_fullname =</span> <span class="fu">mean</span>(<span class="st">`</span><span class="at">nums/length_fullname</span><span class="st">`</span>),</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">name_equals_username_ratio =</span> <span class="fu">mean</span>(<span class="st">`</span><span class="at">name==username</span><span class="st">`</span>),</span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_description_length =</span> <span class="fu">mean</span>(description_length),</span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">external_URL_ratio =</span> <span class="fu">mean</span>(external_URL),</span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">private_ratio =</span> <span class="fu">mean</span>(private),</span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_posts =</span> <span class="fu">mean</span>(posts),</span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_followers =</span> <span class="fu">mean</span>(followers),</span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_follows =</span> <span class="fu">mean</span>(follows)</span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a>fake_comparacion</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 12
+   fake profile_pic_ratio avg_nums_length_username avg_fullname_words
+  &lt;dbl&gt;             &lt;dbl&gt;                    &lt;dbl&gt;              &lt;dbl&gt;
+1     0             0.993                   0.0381               1.77
+2     1             0.410                   0.290                1.15
+# ℹ 8 more variables: avg_nums_length_fullname &lt;dbl&gt;,
+#   name_equals_username_ratio &lt;dbl&gt;, avg_description_length &lt;dbl&gt;,
+#   external_URL_ratio &lt;dbl&gt;, private_ratio &lt;dbl&gt;, avg_posts &lt;dbl&gt;,
+#   avg_followers &lt;dbl&gt;, avg_follows &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>Analicemos los resultados por variable:</p>
+<ul>
+<li><p>profile_pic: es 2,48 veces más probable que una cuenta con foto de perfil sea verdadera a falsa. Esta significancia es importante.</p></li>
+<li><p>nums/length_username: las cuentas falsas multiplican en 7,36 veces este valor con respecto a las verdaderas. Esta significancia es muy importante.</p></li>
+<li><p>fullname_words: las cuentas verdaderas multiplican en 1,55 veces este valor con respecto a las falsas. Esta significancia es leve.</p></li>
+<li><p>nums/length_fullname: las cuentas falsas multiplican en 12,88 veces este valor con respecto a las verdaderas. Esta significancia es muy importante.</p></li>
+<li><p>name==username: las cuentas falsas multiplican en 19,11 veces este valor con respecto a las verdaderas. Esta significancia es altamente importante.</p></li>
+<li><p>description_length: las cuentas verdaderas multiplican en 7,6 veces este valor con respecto a las falsas. Esta significancia es muy importante.</p></li>
+<li><p>external_URL: ninguna cuenta falsa del dataset tiene URL externa, lo cual parece ser un buen criterio de decisión.</p></li>
+<li><p>private: los valores son casi idénticos. La significancia parece ser nula.</p></li>
+<li><p>posts: las cuentas verdaderas multiplican en 23,07 veces este valor con respecto a las falsas. Esta significancia es altamente importante.</p></li>
+<li><p>followers: las cuentas verdaderas multiplican en 1550 veces este valor con respecto a las falsas. Esta significancia es abismal. Sin embargo, tengamos en cuenta que la media de seguidores es tan alta porque hay ciertas cuentas en el dataset que tienen millones de seguidores. En un dataset más aleatorio, con cuentas verdaderas más “mundanas”, la significancia de este atributo sería menor.</p></li>
+<li><p>follows: las cuentas verdaderas multiplican en 2,36 veces este valor con respecto a las falsas. Esta significancia es notable.</p></li>
+</ul>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./visualizacion.html" class="pagination-link">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Visualización</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+</body></html>

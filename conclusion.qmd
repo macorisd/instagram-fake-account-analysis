@@ -1,0 +1,9 @@
+---
+title: "Conclusión"
+---
+
+Hemos explorado distintos métodos de predicción para el caso de las cuentas falsas de Instagram, y el resultado ha sido más que satisfactorio. En este dataset no contamos con información temporal o de relaciones, con lo que no podíamos extraer ninguna información útil con series temporales ni con análisis de redes sociales, pero serían análisis interesantes en caso de contar con los datos necesarios.
+
+En las predicciones, el mayor éxito general lo tiene FCA, con un 87,5% de aciertos. Regresión le sigue con un 85%, y Reglas de Asociación es el último, con 79,17%. Son valores muy buenos, teniendo en cuenta lo simple que es realizar cualquiera de los modelos empleados.
+
+Queda claro que realizar este análisis nos ha brindado una herramienta eficaz para detectar cuentas falsas en la red social. A través de herramientas como FCA, regresión y reglas de asociación, hemos llegado a un nuevo nivel de comprensión que no solo podría ser aplicado en Instagram, sino también en otros contextos donde la autenticidad es crucial, especialmente en el mundo digital actual. A mayor escala, este proyecto podría ser de gran utilidad para las empresas de redes sociales.

@@ -1,0 +1,17 @@
+# R-related files
+.Rhistory
+.RData
+.Rproj.user
+.Ruserdata
+.Rproj
+*.Rproj
+
+# Logs and temporary files
+*.log
+*.out
+*.tmp
+*.DS_Store
+
+# System files
+Thumbs.db
+desktop.ini

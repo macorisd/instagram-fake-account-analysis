@@ -1,0 +1,612 @@
+---
+title: "Formal Concept Analysis"
+---
+
+```{r warning=FALSE, message=FALSE}
+# Librerías, datasets y procesamiento previo
+library(readr)
+library(dplyr)
+library(fcaR)
+library(magrittr)
+library(ggplot2)
+library(psych)
+library(arules)
+
+datos <- read_csv("train.csv")
+View(datos)
+datos_test <- read_csv("test.csv")
+View(datos_test)
+
+datos <- rename(datos, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+
+datos_test <- rename(datos_test, profile_pic=`profile pic`, `nums/length_username` = `nums/length username`, fullname_words=`fullname words`, `nums/length_fullname` = `nums/length fullname`, description_length=`description length`, external_URL=`external URL`, posts=`#posts`, followers=`#followers`, follows=`#follows`)
+```
+
+## Formal Concept Analysis
+
+Ya hemos extraído información importante sobre patrones encontrados en los datos, concretamente sobre qué atributos o combinaciones de ellos determinan, con mayor o menor influencia, si una cuenta es legítima o falsa. Sin embargo, el estudio de reglas de asociación no es la única forma de extraer información en cuanto a las relaciones entre variables y el descubrimiento de patrones: es momento de estudiar lo que se conoce como "Formal Concept Analysis".
+
+### Obtención de las reglas de FCA
+
+Mi primer paso para trabajar con FCA va a consistir en construir una matriz, cuyas filas serán las cuentas del dataset, cuyas columnas serán los valores discretizados de las variables (2 columnas por cada variable binaria y 3 por cada variable numérica) y cuyas celdas serán valores 0/1, en función del valor discretizado que cumpla esa cuenta para cada variable. Es decir, trabajaremos con un formal context binario.
+
+Para comenzar con esta aproximación, antes es necesario ajustar un poco los intervalos de las variables numéricas que hemos visto en reglas de asociación, para que haya 3 categorías (serán high, med y low). En las variables binarias seguimos el mismo procedimiento que en reglas de asociación.
+
+```{r}
+datosDF_FCA_intervalos <- data.frame(datos)
+View(datosDF_FCA_intervalos)
+
+# Discretizar columnas numéricas
+datosDF_FCA_intervalos$nums.length_username <- discretize(datosDF_FCA_intervalos$nums.length_username, method="interval", breaks = 3)
+datosDF_FCA_intervalos$fullname_words <- discretize(datosDF_FCA_intervalos$fullname_words, method="frequency", breaks = 3)
+datosDF_FCA_intervalos$nums.length_fullname <- discretize(datosDF_FCA_intervalos$nums.length_fullname, method="interval", breaks = 3)
+datosDF_FCA_intervalos$description_length <- discretize(datosDF_FCA_intervalos$description_length, method="interval", breaks = 3)
+datosDF_FCA_intervalos$posts <- discretize(datosDF_FCA_intervalos$posts, method="frequency", breaks = 3)
+datosDF_FCA_intervalos$followers <- discretize(datosDF_FCA_intervalos$followers, method="frequency", breaks = 3)
+datosDF_FCA_intervalos$follows <- discretize(datosDF_FCA_intervalos$follows, method="frequency", breaks = 3)
+
+# Identificar las columnas binarias y numéricas
+columnas_binarias <- c(1, 5, 7, 8, 12) # Índices de las columnas binarias
+
+# Convertir columnas binarias a factores
+datosDF_FCA_intervalos[, columnas_binarias] <- lapply(datosDF_FCA_intervalos[, columnas_binarias], factor)
+View(datosDF_FCA_intervalos)
+
+
+```
+
+Ya tenemos los nuevos intervalos ajustados. Ahora toca imprimir los valores de esos intervalos, que usaremos posteriormente para definir los valores de cada cuenta en la matriz:
+
+```{r}
+# Obtener los niveles de cada variable recorriendo las columnas
+for (col_name in names(datosDF_FCA_intervalos)) {
+  col <- datosDF_FCA_intervalos[[col_name]]
+  if (is.factor(col)) {
+    cat(length(levels(col)), " niveles en", col_name, ":", levels(col), "\n")
+  }
+}
+```
+
+Ahora ya tenemos los valores posibles que puede tomar cada variable. En las variables binarias, naturalmente los valores posibles son 0 y 1; en las numéricas hay 3 intervalos por variable.
+
+Lo siguiente sería definir los atributos (categorías de las variables):
+
+```{r}
+datosDF_FCA <- data.frame(datos)
+View(datosDF_FCA)
+
+# Crear un vector con los nombres de los atributos (categorías)
+attributes <- c("profile_pic", "no_profile_pic",
+                "nums_lun_high", "nums_lun_med", "nums_lun_low",
+                "fn_words_high", "fn_words_med", "fn_words_low",
+                "nums_lfn_high", "nums_lfn_med", "nums_lfn_low",
+                "fn_equals_un", "fn_notequals_un",
+                "desc_length_high", "desc_length_med", "desc_length_low",
+                "url", "no_url",
+                "private", "public",
+                "posts_high", "posts_med", "posts_low",
+                "followers_high", "followers_med", "followers_low",
+                "follows_high", "follows_med", "follows_low",
+                "fake", "real")
+```
+
+Una vez tenemos definidos los atributos, es hora de crear el esqueleto de la matriz sobre la que aplicaremos FCA:
+
+```{r}
+# Crear un vector con los nombres de las cuentas
+accounts <- rownames(datosDF_FCA)
+
+# Crear una matriz de ceros con el mismo número de filas que cuentas y el mismo número de columnas que atributos
+datosFCA <- matrix(0, nrow = nrow(datosDF_FCA), ncol = length(attributes))
+
+# Nombrar las filas y columnas
+rownames(datosFCA) <- accounts
+colnames(datosFCA) <- attributes
+
+# Visualizar la matriz vacía
+#datosFCA
+```
+
+Nuestra matriz vacía está lista. Ahora debemos llenarla, y para ello recorreremos cada fila del data frame, y examinaremos los valores de las columnas de esa fila. En función del valor que tome (comparado con los intervalos ajustados de antes), asignaremos un 1 o un 0 en la columna (categoría) correspondiente de la matriz para esa fila:
+
+```{r}
+# Iterar sobre cada fila del dataset y actualizar los valores en la matriz de acuerdo a los intervalos de las variables
+for (i in 1:nrow(datosDF_FCA)) {
+  # profile_pic
+  if (datosDF_FCA[i, "profile_pic"] == 1) {
+    datosFCA[i, "profile_pic"] <- 1
+  } else {
+    datosFCA[i, "no_profile_pic"] <- 1
+  }
+  
+  # nums.length_username
+  if (datosDF_FCA[i, "nums.length_username"] < 0.307) {
+    datosFCA[i, "nums_lun_low"] <- 1
+  } else if (datosDF_FCA[i, "nums.length_username"] < 0.613) {
+    datosFCA[i, "nums_lun_med"] <- 1
+  } else {
+    datosFCA[i, "nums_lun_high"] <- 1
+  }
+  
+  # fullname_words
+  if (datosDF_FCA[i, "fullname_words"] < 1) {
+    datosFCA[i, "fn_words_low"] <- 1
+  } else if (datosDF_FCA[i, "fullname_words"] < 2) {
+    datosFCA[i, "fn_words_med"] <- 1
+  } else {
+    datosFCA[i, "fn_words_high"] <- 1
+  }
+  
+  # nums.length_fullname
+  if (datosDF_FCA[i, "nums.length_fullname"] < 0.333) {
+    datosFCA[i, "nums_lfn_low"] <- 1
+  } else if (datosDF_FCA[i, "nums.length_fullname"] < 0.667) {
+    datosFCA[i, "nums_lfn_med"] <- 1
+  } else {
+    datosFCA[i, "nums_lfn_high"] <- 1
+  }
+  
+  # Name.equals.username
+  if (datosDF_FCA[i, "name..username"] == 1) {
+    datosFCA[i, "fn_equals_un"] <- 1
+  } else {
+    datosFCA[i, "fn_notequals_un"] <- 1
+  }
+  
+  # description_length
+  if (datosDF_FCA[i, "description_length"] < 50) {
+    datosFCA[i, "desc_length_low"] <- 1
+  } else if (datosDF_FCA[i, "description_length"] < 100) {
+    datosFCA[i, "desc_length_med"] <- 1
+  } else {
+    datosFCA[i, "desc_length_high"] <- 1
+  }
+  
+  # external_URL
+  if (datosDF_FCA[i, "external_URL"] == 1) {
+    datosFCA[i, "url"] <- 1
+  } else {
+    datosFCA[i, "no_url"] <- 1
+  }
+  
+  # private
+  if (datosDF_FCA[i, "private"] == 1) {
+    datosFCA[i, "private"] <- 1
+  } else {
+    datosFCA[i, "public"] <- 1
+  }
+  
+  # posts
+  if (datosDF_FCA[i, "posts"] < 2) {
+    datosFCA[i, "posts_low"] <- 1
+  } else if (datosDF_FCA[i, "posts"] < 43.3) {
+    datosFCA[i, "posts_med"] <- 1
+  } else {
+    datosFCA[i, "posts_high"] <- 1
+  }
+  
+  # followers
+  if (datosDF_FCA[i, "followers"] < 54.3) {
+    datosFCA[i, "followers_low"] <- 1
+  } else if (datosDF_FCA[i, "followers"] < 415) {
+    datosFCA[i, "followers_med"] <- 1
+  } else {
+    datosFCA[i, "followers_high"] <- 1
+  }
+  
+  # follows
+  if (datosDF_FCA[i, "follows"] < 89.3) {
+    datosFCA[i, "follows_low"] <- 1
+  } else if (datosDF_FCA[i, "follows"] < 432) {
+    datosFCA[i, "follows_med"] <- 1
+  } else {
+    datosFCA[i, "follows_high"] <- 1
+  }
+  
+  # fake
+  if (datosDF_FCA[i, "fake"] == 1) {
+    datosFCA[i, "fake"] <- 1
+  } else {
+    datosFCA[i, "real"] <- 1
+  }
+}
+
+# Visualizar la matriz llena
+#datosFCA
+```
+
+Ahora viene lo interesante: convertir la matriz a un objeto formalcontext y trabajar con FCA.
+
+```{r}
+# Convertir la matriz a un objeto FormalContext
+fc_datos <- FormalContext$new(datosFCA)
+fc_datos
+```
+
+Vemos que la conversión ha sido exitosa. Además de ver la tabla, podemos hacer un plot para visualizar el resultado:
+
+```{r}
+# Visualizar el formal context
+fc_datos$plot()
+```
+
+Naturalmente, al ser tantos datos, no podemos ver bien cada fila. Sin embargo, podemos ver patrones que concuerdan con nuestro dataset: la última columna es 'fake', y sabemos que la primera mitad de filas son cuentas reales, y la segunda mitad, cuentas falsas, tal y como indican las barras negras del final del plot.
+
+Observemos más de cerca el plot (5 primeras filas):
+
+```{r}
+fc_datos[1:5]$plot()
+```
+
+Como vemos, las barras negras concuerdan perfectamente con nuestro dataset. Parece que hemos tenido éxito. También podemos comprobar este éxito usando el extent y el intent:
+
+```{r}
+S1 <- Set$new(fc_datos$attributes)
+S1$assign(fake=1)
+
+# Extent (filas) de las cuentas fake
+S2 <- fc_datos$extent(S1)
+S2
+```
+
+El extent lista los nombres de las filas con cuentas que cumplen las condiciones establecidas en S1 (las cuentas son fake). Echando un vistazo al dataset, comprobamos que las filas de la salida (289-576) son las cuentas fake. También existe el concepto de intent, el cual devuelve el conjunto de características que comparte un conjunto de filas. Por esa lógica, si hiciéramos el intent de S2 (cuentas fake), debería devolvernos fake y no_url, dado que ninguna cuenta fake tiene URL externa:
+
+```{r}
+# Intent (características) de las cuentas fake
+fc_datos$intent(S2)
+```
+
+Una vez más, parece que ha habido éxito.
+
+Ahora es momento de encontrar las implicaciones:
+
+```{r}
+# Encontrar implicaciones
+fc_datos$find_implications()
+
+# Número de implicaciones encontradas
+fc_datos$implications$cardinality()
+```
+
+Ahora que sabemos que hay un número considerable de implicaciones, intentemos reducir la cantidad eliminando redundancias:
+
+```{r}
+fc_datos$implications$apply_rules(rules = c("composition",
+                                      "generalization",
+                                      "simplification"),
+                            parallelize = FALSE)
+```
+
+Parece que ninguna de las implicaciones originales era redundante. Echemos un vistazo a las primeras 20 implicaciones:
+
+```{r}
+fc_datos$implications[1:20]
+```
+
+Ahora es el momento de extraer conocimiento con las implicaciones que nos interesan (variable fake en el consecuente de la regla).
+
+Comencemos con las reglas cuyo consecuente es únicamente 'fake' (si además de fake se dejan otras variables, el resultado tiene mucho ruido y reglas extrañas):
+
+```{r}
+# Implicaciones con 'fake' en el consecuente
+fc_datos$implications$filter(rhs = "fake", not_rhs = attributes[-which(attributes == "fake")])
+```
+
+Basándonos en estas reglas, podemos considerar que una cuenta es falsa cuando identificamos ciertas combinaciones de estas características:
+
+-   Pocas o nulas publicaciones (igual que en reglas de asociación)
+-   Descripción vacía o muy breve (igual que en reglas de asociación)
+-   Ausencia de foto de perfil (igual que en reglas de asociación)
+-   Pocos o nulos seguidos (igual que en reglas de asociación)
+-   Ausencia de URL externa (igual que en reglas de asociación)
+-   Bajo número de seguidores
+
+Como vemos, las conclusiones generales son muy similares a las obtenidas con arules.
+
+Ahora veamos los antecedentes para cuentas verdaderas:
+
+```{r}
+# Implicaciones con 'real' en el consecuente
+fc_datos$implications$filter(rhs = "real", not_rhs = attributes[-which(attributes == "real")])
+```
+
+Basándonos en estas reglas, podemos considerar que una cuenta es verdadera cuando identificamos ciertas combinaciones de estas características:
+
+-   Ratio de números en la longitud del username bajo (igual que en reglas de asociación)
+-   Cantidad considerable de palabras en el nombre completo (igual que en reglas de asociación)
+-   Presencia de foto de perfil (igual que en reglas de asociación)
+-   Descripción detallada (igual que en reglas de asociación)
+-   Número alto de publicaciones (igual que en reglas de asociación)
+-   Número considerable de seguidores (ya comentamos que este parámetro faltó en reglas de asociación, pero aquí sí aparece)
+
+Las conclusiones generales para cuentas verdaderas también son muy similares a las obtenidas con arules.
+
+### Predicción
+
+Ahora es el momento de usar las reglas obtenidas para predecir la veracidad de las cuentas en el dataset de test. Para ello, debemos organizar los datos de test de la misma forma que los de entrenamiento. Como me ha gustado el modo de trabajar con el formato de reglas de arules, primero convertiré las reglas obtenidas a arules para poder aplicarlas a los datos de test.
+
+```{r}
+# Convertir las implicaciones a reglas de asociación
+reglas_FCA <- fc_datos$implications$to_arules()
+
+# Mostrar la primera regla obtenida
+inspect(reglas_FCA[1])
+```
+
+Mostremos el número de reglas obtenidas, que debería ser 1292:
+
+```{r}
+# Número de reglas obtenidas
+length(reglas_FCA)
+```
+
+Parece que las reglas se han convertido con éxito a formato arules.
+
+Ahora, debemos crear una matriz de datos de test con las mismas características que la matriz de datos de entrenamiento:
+
+```{r}
+# Crear un vector con los nombres de las cuentas
+accounts <- rownames(datos_test)
+
+# Crear lista con atributos para las filas de test (sin real ni fake)
+attributes_test <- attributes[-which(attributes %in% c("fake", "real"))]
+
+# Crear una matriz de ceros con el mismo número de filas que cuentas y el mismo número de columnas que atributos
+datosFCA_test <- matrix(0, nrow = nrow(datos_test), ncol = length(attributes_test))
+
+# Nombrar las filas y columnas
+rownames(datosFCA_test) <- accounts
+colnames(datosFCA_test) <- attributes_test
+
+# Visualizar la matriz vacía
+#datosFCA_test
+```
+
+Ahora, debemos llenar la matriz de datos de test con los valores correspondientes a cada cuenta, fijándonos en los intervalos generados para las cuentas de entrenamiento:
+
+```{r}
+datosDF_FCA_test <- data.frame(datos_test)
+
+# Iterar sobre cada fila del dataset y actualizar los valores en la matriz de acuerdo a los intervalos de las variables
+for (i in 1:nrow(datosDF_FCA_test)) {
+  # profile_pic
+  if (datosDF_FCA_test[i, "profile_pic"] == 1) {
+    datosFCA_test[i, "profile_pic"] <- 1
+  } else {
+    datosFCA_test[i, "no_profile_pic"] <- 1
+  }
+  
+  # nums.length_username
+  if (datosDF_FCA_test[i, "nums.length_username"] < 0.307) {
+    datosFCA_test[i, "nums_lun_low"] <- 1
+  } else if (datosDF_FCA_test[i, "nums.length_username"] < 0.613) {
+    datosFCA_test[i, "nums_lun_med"] <- 1
+  } else {
+    datosFCA_test[i, "nums_lun_high"] <- 1
+  }
+  
+  # fullname_words
+  if (datosDF_FCA_test[i, "fullname_words"] < 1) {
+    datosFCA_test[i, "fn_words_low"] <- 1
+  } else if (datosDF_FCA_test[i, "fullname_words"] < 2) {
+    datosFCA_test[i, "fn_words_med"] <- 1
+  } else {
+    datosFCA_test[i, "fn_words_high"] <- 1
+  }
+  
+  # nums.length_fullname
+  if (datosDF_FCA_test[i, "nums.length_fullname"] < 0.333) {
+    datosFCA_test[i, "nums_lfn_low"] <- 1
+  } else if (datosDF_FCA_test[i, "nums.length_fullname"] < 0.667) {
+    datosFCA_test[i, "nums_lfn_med"] <- 1
+  } else {
+    datosFCA_test[i, "nums_lfn_high"] <- 1
+  }
+  
+  # Name.equals.username
+  if (datosDF_FCA_test[i, "name..username"] == 1) {
+    datosFCA_test[i, "fn_equals_un"] <- 1
+  } else {
+    datosFCA_test[i, "fn_notequals_un"] <- 1
+  }
+  
+  # description_length
+  if (datosDF_FCA_test[i, "description_length"] < 50) {
+    datosFCA_test[i, "desc_length_low"] <- 1
+  } else if (datosDF_FCA_test[i, "description_length"] < 100) {
+    datosFCA_test[i, "desc_length_med"] <- 1
+  } else {
+    datosFCA_test[i, "desc_length_high"] <- 1
+  }
+  
+  # external_URL
+  if (datosDF_FCA_test[i, "external_URL"] == 1) {
+    datosFCA_test[i, "url"] <- 1
+  } else {
+    datosFCA_test[i, "no_url"] <- 1
+  }
+  
+  # private
+  if (datosDF_FCA_test[i, "private"] == 1) {
+    datosFCA_test[i, "private"] <- 1
+  } else {
+    datosFCA_test[i, "public"] <- 1
+  }
+  
+  # posts
+  if (datosDF_FCA_test[i, "posts"] < 2) {
+    datosFCA_test[i, "posts_low"] <- 1
+  } else if (datosDF_FCA_test[i, "posts"] < 43.3) {
+    datosFCA_test[i, "posts_med"] <- 1
+  } else {
+    datosFCA_test[i, "posts_high"] <- 1
+  }
+  
+  # followers
+  if (datosDF_FCA_test[i, "followers"] < 54.3) {
+    datosFCA_test[i, "followers_low"] <- 1
+  } else if (datosDF_FCA_test[i, "followers"] < 415) {
+    datosFCA_test[i, "followers_med"] <- 1
+  } else {
+    datosFCA_test[i, "followers_high"] <- 1
+  }
+  
+  # follows
+  if (datosDF_FCA_test[i, "follows"] < 89.3) {
+    datosFCA_test[i, "follows_low"] <- 1
+  } else if (datosDF_FCA_test[i, "follows"] < 432) {
+    datosFCA_test[i, "follows_med"] <- 1
+  } else {
+    datosFCA_test[i, "follows_high"] <- 1
+  }
+}
+
+# Visualizar la matriz llena
+#datosFCA_test
+```
+
+Ahora es momento de filtrar el gran número de reglas obtenidas, para quedarnos solo con las que contienen 'fake' o 'real' en el consecuente, empezando por las 'fake':
+
+```{r}
+reglas_FCA_fake <- subset(reglas_FCA, subset = rhs %oin% "fake")
+
+# Desechar las reglas con count < 15
+reglas_FCA_fake <- subset(reglas_FCA_fake, subset = count >= 15)
+
+inspect(reglas_FCA_fake)
+```
+
+Como vemos, hay 15 reglas. Ahora, hagamos lo mismo con las reglas que contienen 'real' en el consecuente:
+
+```{r}
+reglas_FCA_real <- subset(reglas_FCA, subset = rhs %oin% "real")
+
+# Desechar las reglas con count < 15
+reglas_FCA_real <- subset(reglas_FCA_real, subset = count >= 15)
+
+inspect(reglas_FCA_real)
+```
+
+Vemos que hay 13 reglas. Ahora, unamos las reglas de cuentas falsas y verdaderas en una variable:
+
+```{r}
+# Guardar la unión de las reglas fake y real
+reglas_FCA_real_fake <- c(reglas_FCA_fake, reglas_FCA_real)
+inspect(reglas_FCA_real_fake)
+```
+
+Hay 28 reglas en total.
+
+Ahora, vamos a predecir la veracidad de las cuentas en el dataset de test usando las reglas obtenidas:
+
+```{r}
+# Leer el archivo CSV
+datos_test_predicciones <- read.csv("datos_test_predicciones.csv")
+
+# Crear la fila vacía 'fake_predict_FCA' en 'datos_test_predicciones'
+datos_test_predicciones$fake_predict_FCA <- NA
+
+# Bucle para recorrer cada fila de la matriz datosFCA_test
+for (i in 1:nrow(datosFCA_test)) {
+  # Obtener los nombres de las columnas de la fila presente (donde el valor es 1)
+  columnas_presentes <- colnames(datosFCA_test)[datosFCA_test[i, ] == 1]
+  
+  # Bucle para recorrer cada regla en reglas_FCA_real_fake
+  for (j in 1:length(reglas_FCA_real_fake)) {
+    # Obtener el lhs de la regla j
+    lhs_rule <- as(lhs(reglas_FCA_real_fake[j]), "list")[[1]]
+    
+    # Comprobar si el lhs de la regla es subconjunto de columnas_presentes
+    if (all(lhs_rule %in% columnas_presentes)) {
+      # Obtener el rhs (consecuente) de la regla
+      rhs_rule <- labels(rhs(reglas_FCA_real_fake[j]))[1]
+      
+      # Asignar el valor numérico según el contenido del consecuente
+      if (grepl("real", rhs_rule)) {
+        datos_test_predicciones$fake_predict_FCA[i] <- 0
+      } else if (grepl("fake", rhs_rule)) {
+        datos_test_predicciones$fake_predict_FCA[i] <- 1
+      }
+      
+      break  # Salir del bucle una vez encontrada una regla aplicable
+    }
+    
+    # Si no se ha encontrado ninguna regla aplicable, se sigue esta heurística:
+    else {
+      # Si la cuenta tiene URL externa, es verdadera
+      if ("url" %in% columnas_presentes) {
+        datos_test_predicciones$fake_predict_FCA[i] <- 0
+      }
+      # Si la cuenta no tiene foto de perfil, es falsa
+      else if ("no_profile_pic" %in% columnas_presentes) {
+        datos_test_predicciones$fake_predict_FCA[i] <- 1
+      }
+      # Si la cuenta tiene menos de 250 seguido, es falsa
+      else if ("follows_low" %in% columnas_presentes) {
+        datos_test_predicciones$fake_predict_FCA[i] <- 1
+      }
+      # En otro caso, consideramos que es verdadera
+      else {
+        datos_test_predicciones$fake_predict_FCA[i] <- 0
+      }
+    }
+  }
+}
+
+#View(datos_test_predicciones)
+head(datos_test_predicciones)
+```
+
+Vemos que hay valores 0/1 en la columna fake_predict_FCA.
+
+Ahora, contemos el número de valores NA en la columna fake_predict_FCA:
+
+```{r}
+# Contar el número de valores NA en la columna fake_predict_FCA
+cat("La columna fake_predict_FCA tiene ", sum(is.na(datos_test_predicciones$fake_predict_FCA)), " valores NA")
+```
+
+Parece que la predicción ha sido satisfactoria. Ahora, calculemos el porcentaje de éxito en la predicción de cuentas falsas, de cuentas verdaderas y en general:
+
+```{r}
+# Calcular el porcentaje de éxito en la predicción de cuentas falsas
+predicciones_correctas_falsas_FCA <- sum(datos_test_predicciones$fake_predict_FCA == datos_test_predicciones$fake & datos_test_predicciones$fake == 1)
+total_falsas_FCA <- sum(datos_test_predicciones$fake == 1)
+porcentaje_exito_falsas_FCA <- (predicciones_correctas_falsas_FCA / total_falsas_FCA) * 100
+
+# Calcular el porcentaje de éxito en la predicción de cuentas verdaderas
+predicciones_correctas_verdaderas_FCA <- sum(datos_test_predicciones$fake_predict_FCA == datos_test_predicciones$fake & datos_test_predicciones$fake == 0)
+total_verdaderas_FCA <- sum(datos_test_predicciones$fake == 0)
+porcentaje_exito_verdaderas_FCA <- (predicciones_correctas_verdaderas_FCA / total_verdaderas_FCA) * 100
+
+# Calcular el porcentaje de éxito general
+predicciones_correctas_FCA <- sum(datos_test_predicciones$fake_predict_FCA == datos_test_predicciones$fake)
+total_predicciones_FCA <- nrow(datos_test_predicciones)
+porcentaje_exito_general_FCA <- (predicciones_correctas_FCA / total_predicciones_FCA) * 100
+
+# Guardar el data frame en un archivo CSV
+write.csv(datos_test_predicciones, "datos_test_predicciones.csv", row.names = FALSE)
+
+
+# Imprimir el resultado
+cat("El porcentaje de éxito en la predicción de cuentas falsas es:", porcentaje_exito_falsas_FCA, "%\n", "El porcentaje de éxito en la predicción de cuentas verdaderas es:", porcentaje_exito_verdaderas_FCA, "%\n", "El porcentaje de éxito general en la predicción de cuentas es:", porcentaje_exito_general_FCA, "%\n")
+```
+
+Como vemos, los porcentajes de éxito son muy altos, lo que indica que el modelo de regresión ha sido efectivo en la predicción de cuentas falsas y verdaderas.
+
+Añadamos los porcentajes de éxito a la tabla de porcentajes:
+
+```{r}
+# Leer el archivo CSV
+exito_predicciones <- read.csv("exito_predicciones.csv")
+
+# Añadir los porcentajes de éxito a la tabla de porcentajes
+exito_predicciones <- rbind(exito_predicciones, c("FCA", porcentaje_exito_falsas_FCA, porcentaje_exito_verdaderas_FCA, porcentaje_exito_general_FCA))
+exito_predicciones
+
+# Guardar el data frame en un archivo CSV
+write.csv(exito_predicciones, "exito_predicciones.csv", row.names = FALSE)
+```
+
+Las reglas de asociación han rendido algo mejor que FCA en la predicción de cuentas falsas, pero el formal concept analysis ha sido bastante mejor en la predicción de cuentas verdaderas (20 puntos por encima) y en general. FCA ha sido 8 puntos más efectivo que reglas de asociación en la predicción general.
+
